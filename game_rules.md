@@ -5,7 +5,7 @@
 3. If your team loses you lose you are elimated (optional)
     - If you team loses you lose team points (optional)
 4. If your team wins you get points based on team points Equation
-5. If your team tie you get half of total points ((team 1 points) + (team 2 points)) / 2
+5. If your team tie you get half of total points ((team 1 points if they won) + (team 2 points if they won)) / 2
 6. If you get back to back correct teams after elimation you get back into the pool ( All other rules still apply and Tie counts as a win in this sceranio) (optional) ( number of games can be set)
 7. When you are elimated if you win you get 0.5 * (team points equation)
 

@@ -24,7 +24,7 @@ Todo list for building the game app/website from [Game_rules.md](Game_rules.md).
 ## Data & models
 
 - [ ] Define **User** model (id, name, email, auth) — *Backend*
-- [ ] Define **League** model (name, settings, season, week) — *Backend*
+- [ ] Define **League** model (user, settings, season, week) — *Backend*
 - [ ] Define **League settings** (elimination on/off, division rule on/off, comeback rule on/off, comeback games count) — *Backend*
 - [ ] Define **Team** model (NFL teams + divisions) — *Backend*
 - [ ] Define **Pick** model (user, league, week, team, game, result) — *Backend*
