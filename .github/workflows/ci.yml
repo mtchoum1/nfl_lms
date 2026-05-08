@@ -15,11 +15,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --frozen --extra dev
 
       - name: Lint
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Tests (unit + e2e)
-        run: pytest
+        run: uv run pytest
