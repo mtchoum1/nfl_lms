@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from espn_nfl import fetch_nfl_teams
 from league import League
@@ -36,6 +38,21 @@ def _league_to_dict(league: League) -> dict:
         "users": [_user_to_dict(u) for u in league.users],
         "settings": _settings_to_dict(league.settings),
     }
+
+
+class UserWriteBody(BaseModel):
+    name: str
+
+
+class LeagueUserRef(BaseModel):
+    id: str
+    name: str
+
+
+class LeagueWriteBody(BaseModel):
+    name: str
+    users: list[LeagueUserRef]
+    settings: dict[str, Any]
 
 
 def _team_to_dict(team: Team) -> dict:
@@ -82,6 +99,8 @@ def create_app() -> FastAPI:
             "health": "/health",
             "info": "/api/v1/info",
             "nfl_teams": "/api/v1/nfl/teams",
+            "users_crud": "/api/v1/users/{user_id}",
+            "leagues_crud": "/api/v1/leagues/{league_id}",
         }
 
     @app.get("/health", tags=["meta"])
@@ -118,6 +137,34 @@ def create_app() -> FastAPI:
         """All NFL teams with divisions (live ESPN HTTP calls; cache in production)."""
         teams = fetch_nfl_teams()
         return [_team_to_dict(t) for t in teams]
+
+    @app.get("/api/v1/users/{user_id}", tags=["firestore"])
+    def get_user_firestore(user_id: str) -> dict:
+        user = User.load_from_firestore(user_id)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        return _user_to_dict(user)
+
+    @app.put("/api/v1/users/{user_id}", tags=["firestore"])
+    def put_user_firestore(user_id: str, body: UserWriteBody) -> dict:
+        user = User(user_id, body.name)
+        user.save_to_firestore()
+        return _user_to_dict(user)
+
+    @app.get("/api/v1/leagues/{league_id}", tags=["firestore"])
+    def get_league_firestore(league_id: str) -> dict:
+        league = League.load_from_firestore(league_id)
+        if league is None:
+            raise HTTPException(status_code=404, detail="League not found")
+        return _league_to_dict(league)
+
+    @app.put("/api/v1/leagues/{league_id}", tags=["firestore"])
+    def put_league_firestore(league_id: str, body: LeagueWriteBody) -> dict:
+        users = [User(u.id, u.name) for u in body.users]
+        settings = Settings.from_firestore_dict(body.settings)
+        league = League(league_id, body.name, users, settings)
+        league.save_to_firestore()
+        return _league_to_dict(league)
 
     return app
 

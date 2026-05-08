@@ -1,0 +1,17 @@
+{
+  "name": "nfl-lms-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "firebase": "^11.6.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.0",
+    "vite": "^6.3.0"
+  }
+}

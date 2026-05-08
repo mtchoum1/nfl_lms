@@ -1,5 +1,6 @@
 README.md
 espn_nfl.py
+firestore_store.py
 league.py
 pyproject.toml
 settings.py

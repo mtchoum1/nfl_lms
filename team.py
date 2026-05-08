@@ -1,5 +1,9 @@
 """NFL team model (ESPN-backed ids and division metadata)."""
 
+from __future__ import annotations
+
+from typing import Any
+
 
 class Team:
     """One NFL franchise for a given season context (division alignment from ESPN)."""
@@ -54,3 +58,41 @@ class Team:
 
     def __hash__(self) -> int:
         return hash(self.id)
+
+    def to_firestore_dict(self) -> dict[str, Any]:
+        """Document fields for collection ``teams`` (document id = ESPN team id)."""
+        out: dict[str, Any] = {
+            "id": self.id,
+            "abbreviation": self.abbreviation,
+            "display_name": self.display_name,
+        }
+        optional = {
+            "location": self.location,
+            "short_display_name": self.short_display_name,
+            "slug": self.slug,
+            "division_id": self.division_id,
+            "division_name": self.division_name,
+            "division_abbreviation": self.division_abbreviation,
+            "conference_id": self.conference_id,
+            "conference_name": self.conference_name,
+        }
+        for key, val in optional.items():
+            if val is not None:
+                out[key] = val
+        return out
+
+    @classmethod
+    def from_firestore_dict(cls, data: dict[str, Any]) -> Team:
+        return cls(
+            id=str(data["id"]),
+            abbreviation=str(data.get("abbreviation", "")),
+            display_name=str(data.get("display_name", "")),
+            location=data.get("location"),
+            short_display_name=data.get("short_display_name"),
+            slug=data.get("slug"),
+            division_id=data.get("division_id"),
+            division_name=data.get("division_name"),
+            division_abbreviation=data.get("division_abbreviation"),
+            conference_id=data.get("conference_id"),
+            conference_name=data.get("conference_name"),
+        )

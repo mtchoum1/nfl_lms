@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from typing import Any
+
+
 class Settings:
     """Per-league Last Man Standing rule options."""
 
@@ -50,4 +55,28 @@ class Settings:
             and self.comeback_games_required == other.comeback_games_required
             and self.active_multiplier == other.active_multiplier
             and self.eliminated_multiplier == other.eliminated_multiplier
+        )
+
+    def to_firestore_dict(self) -> dict[str, Any]:
+        """Persistable map for Firestore (nested under a league document)."""
+        out: dict[str, Any] = {
+            "elimination_on_loss": self.elimination_on_loss,
+            "division_rotation_rule": self.division_rotation_rule,
+            "comeback_rule": self.comeback_rule,
+            "comeback_games_required": self.comeback_games_required,
+            "active_multiplier": self.active_multiplier,
+        }
+        if self.eliminated_multiplier is not None:
+            out["eliminated_multiplier"] = self.eliminated_multiplier
+        return out
+
+    @classmethod
+    def from_firestore_dict(cls, data: dict[str, Any]) -> Settings:
+        return cls(
+            elimination_on_loss=data.get("elimination_on_loss", True),
+            division_rotation_rule=data.get("division_rotation_rule", False),
+            comeback_rule=data.get("comeback_rule", False),
+            comeback_games_required=int(data.get("comeback_games_required", 2)),
+            active_multiplier=float(data.get("active_multiplier", 1.0)),
+            eliminated_multiplier=data.get("eliminated_multiplier"),
         )
