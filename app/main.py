@@ -7,8 +7,10 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from espn_nfl import fetch_nfl_teams
 from league import League
 from settings import Settings
+from team import Team
 from user import User
 
 
@@ -33,6 +35,22 @@ def _league_to_dict(league: League) -> dict:
         "name": league.get_name(),
         "users": [_user_to_dict(u) for u in league.users],
         "settings": _settings_to_dict(league.settings),
+    }
+
+
+def _team_to_dict(team: Team) -> dict:
+    return {
+        "id": team.get_id(),
+        "abbreviation": team.get_abbreviation(),
+        "display_name": team.get_display_name(),
+        "location": team.location,
+        "short_display_name": team.short_display_name,
+        "slug": team.slug,
+        "division_id": team.division_id,
+        "division_name": team.division_name,
+        "division_abbreviation": team.division_abbreviation,
+        "conference_id": team.conference_id,
+        "conference_name": team.conference_name,
     }
 
 
@@ -63,6 +81,7 @@ def create_app() -> FastAPI:
             "openapi": "/openapi.json",
             "health": "/health",
             "info": "/api/v1/info",
+            "nfl_teams": "/api/v1/nfl/teams",
         }
 
     @app.get("/health", tags=["meta"])
@@ -93,6 +112,12 @@ def create_app() -> FastAPI:
             ),
         )
         return _league_to_dict(sample)
+
+    @app.get("/api/v1/nfl/teams", tags=["nfl"])
+    def nfl_teams() -> list[dict]:
+        """All NFL teams with divisions (live ESPN HTTP calls; cache in production)."""
+        teams = fetch_nfl_teams()
+        return [_team_to_dict(t) for t in teams]
 
     return app
 

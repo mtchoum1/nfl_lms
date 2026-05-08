@@ -11,7 +11,9 @@ This repo includes an early **Python domain layer** and a **FastAPI** HTTP API (
 | [`user.py`](user.py) | `User`: `id`, `name`, getters, string representation, equality/hash |
 | [`league.py`](league.py) | `League`: `id`, `name`, list of `User`, `Settings` |
 | [`settings.py`](settings.py) | `Settings`: rule toggles (elimination, division rotation, comeback + streak length), `active_multiplier` / `eliminated_multiplier`, `set_multipliers()` |
-| [`app/main.py`](app/main.py) | FastAPI app: `GET /health`, `GET /api/v1/info`, `GET /api/v1/demo/league` (uses domain models) |
+| [`team.py`](team.py) | `Team`: ESPN id, abbreviation, names, division + conference (from fetcher) |
+| [`espn_nfl.py`](espn_nfl.py) | `fetch_nfl_teams()`: loads 32 teams + divisions from ESPN HTTP APIs |
+| [`app/main.py`](app/main.py) | FastAPI: health, info, demo league, **`GET /api/v1/nfl/teams`** (live ESPN; cache in production) |
 
 Tests live under [`test/`](test/) (`test_user.py`, `test_league.py`, `test_settings.py`, `test_api.py`).
 
@@ -66,6 +68,8 @@ pytest
 ```
 
 `pyproject.toml` sets `pythonpath = ["."]` so imports like `from user import User` resolve during tests.
+
+Optional live ESPN integration test (hits the network): set `NFL_LMS_LIVE_ESPN=1` and run `pytest test/test_espn_nfl.py -k live`.
 
 ## Docs
 

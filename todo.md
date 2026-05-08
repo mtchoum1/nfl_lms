@@ -18,6 +18,7 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 | **Packaging / tests** | [`pyproject.toml`](pyproject.toml): `user`, `league`, `settings` modules; optional `dev` deps (`pytest`); `pythonpath = ["."]` for test imports |
 | **FastAPI scaffold** | [`app/main.py`](app/main.py): health + info + demo league JSON; [`render.yaml`](render.yaml) for Render Web Service; [`test/test_api.py`](test/test_api.py) |
 | **Lint / editor defaults** | [Ruff](https://docs.astral.sh/ruff/) in `[project.optional-dependencies] dev`; `[tool.ruff]` in [`pyproject.toml`](pyproject.toml); [`.editorconfig`](.editorconfig) |
+| **`team.Team` + ESPN fetch** | [`team.py`](team.py), [`espn_nfl.py`](espn_nfl.py) (`fetch_nfl_teams`), [`GET /api/v1/nfl/teams`](app/main.py); tests [`test/test_team.py`](test/test_team.py), [`test/test_espn_nfl.py`](test/test_espn_nfl.py) |
 
 **Still outstanding for “full” models:** persistence, User email/auth, League season/week, NFL Team/Pick/Game models, and all rule/scoring logic below.
 
@@ -43,10 +44,10 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 - [ ] Define **User** model (id, name — **done** in [`user.py`](user.py); email, auth, DB **TBD**) — *Backend*
 - [ ] Define **League** model (users, settings — **done** in [`league.py`](league.py); season, week, persistence **TBD**) — *Backend*
 - [x] Define **League settings** (elimination on/off, division rule on/off, comeback rule on/off, comeback games count; optional multipliers) — [`settings.py`](settings.py) — *Backend*
-- [ ] Define **Team** model (NFL teams + divisions) — *Backend*
+- [x] Define **Team** model (NFL teams + divisions) — *Backend* [`team.py`](team.py), [`espn_nfl.py`](espn_nfl.py), [`GET /api/v1/nfl/teams`](app/main.py)
 - [ ] Define **Pick** model (user, league, week, team, game, result) — *Backend*
 - [ ] Define **Game** model (week, home/away, odds, result, status) — *Backend*
-- [ ] Seed or fetch NFL schedule and divisions — *Backend*
+- [x] Seed or fetch NFL schedule and divisions — *Backend* (`fetch_nfl_teams`; schedule TBD)
 
 **Tests**
 

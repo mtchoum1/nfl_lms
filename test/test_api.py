@@ -1,8 +1,11 @@
 """Smoke tests for the FastAPI app."""
 
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
 from app.main import app
+from team import Team
 
 client = TestClient(app)
 
@@ -38,3 +41,24 @@ def test_demo_league_shape():
     assert len(body["users"]) == 2
     assert body["users"][0]["name"] == "Alice"
     assert "elimination_on_loss" in body["settings"]
+
+
+@patch(
+    "app.main.fetch_nfl_teams",
+    return_value=[
+        Team(
+            id="1",
+            abbreviation="XXX",
+            display_name="Example",
+            division_name="NFC West",
+            conference_name="NFC",
+        )
+    ],
+)
+def test_nfl_teams_route_mocked(_mock_fetch):
+    r = client.get("/api/v1/nfl/teams")
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 1
+    assert rows[0]["abbreviation"] == "XXX"
+    assert rows[0]["division_name"] == "NFC West"
