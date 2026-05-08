@@ -6,26 +6,41 @@ Todo list for building the game app/website from [Game_rules.md](Game_rules.md).
 
 ---
 
+## Progress (Python prototype — May 2026)
+
+Domain models and tests exist as plain Python modules at the repo root (no API or database yet):
+
+| Deliverable | Notes |
+|-------------|--------|
+| **`user.User`** | `id`, `name`; getters; `repr` / `str`; equality & hash — [`user.py`](user.py), [`test/test_user.py`](test/test_user.py) |
+| **`league.League`** | `id`, `name`, `users`, `settings` — [`league.py`](league.py), [`test/test_league.py`](test/test_league.py) |
+| **`settings.Settings`** | Elimination / division-rotation / comeback flags; `comeback_games_required`; `active_multiplier` & `eliminated_multiplier`; `set_multipliers()` — [`settings.py`](settings.py), [`test/test_settings.py`](test/test_settings.py) |
+| **Packaging / tests** | [`pyproject.toml`](pyproject.toml): `user`, `league`, `settings` modules; optional `dev` deps (`pytest`); `pythonpath = ["."]` for test imports |
+
+**Still outstanding for “full” models:** persistence, User email/auth, League season/week, NFL Team/Pick/Game models, and all rule/scoring logic below.
+
+---
+
 ## Project setup
 
 - [ ] Choose stack (e.g. React/Next.js + Node/API, or full-stack framework) — *Both*
 - [ ] Initialize repo (frontend + backend or monorepo) — *Both*
 - [ ] Set up dev environment, linting, and basic config — *Both*
-- [ ] Add dependency management and scripts (build, dev, test) — *Both*
+- [x] Add dependency management (Python: `pyproject.toml`, optional `[dev]` with pytest) — *Both*
 
 **Tests**
 
 - [ ] Build succeeds (`npm run build` or equivalent) — *Both*
-- [ ] Test script runs and exits 0 (empty or placeholder suite) — *Both*
+- [x] Test script runs and exits 0 — `pytest` on `test/test_user.py`, `test/test_league.py`, `test/test_settings.py` — *Both*
 - [ ] Lint passes in CI or locally — *Both*
 
 ---
 
 ## Data & models
 
-- [ ] Define **User** model (id, name, email, auth) — *Backend*
-- [ ] Define **League** model (user, settings, season, week) — *Backend*
-- [ ] Define **League settings** (elimination on/off, division rule on/off, comeback rule on/off, comeback games count) — *Backend*
+- [ ] Define **User** model (id, name — **done** in [`user.py`](user.py); email, auth, DB **TBD**) — *Backend*
+- [ ] Define **League** model (users, settings — **done** in [`league.py`](league.py); season, week, persistence **TBD**) — *Backend*
+- [x] Define **League settings** (elimination on/off, division rule on/off, comeback rule on/off, comeback games count; optional multipliers) — [`settings.py`](settings.py) — *Backend*
 - [ ] Define **Team** model (NFL teams + divisions) — *Backend*
 - [ ] Define **Pick** model (user, league, week, team, game, result) — *Backend*
 - [ ] Define **Game** model (week, home/away, odds, result, status) — *Backend*
@@ -167,7 +182,8 @@ Todo list for building the game app/website from [Game_rules.md](Game_rules.md).
 - [ ] Notifications (e.g. pick reminder, results, elimination) — *Both*
 - [ ] Dark/light theme — *Frontend*
 - [ ] Export standings or history (e.g. CSV) — *Both*
-- [ ] Basic tests for scoring and rule logic — *Backend*
+- [x] Basic tests for domain models (`User`, `League`, `Settings`) — *Backend*
+- [ ] Tests for scoring and rule logic (points equation, elimination, comeback, etc.) — *Backend*
 - [ ] Deploy (e.g. Vercel + DB) and env/config for production — *Both*
 
 **Tests**

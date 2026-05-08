@@ -1,2 +1,31 @@
 # nfl_lms
-NFL Last Man Standing Game
+
+NFL **Last Man Standing** game — product planning lives in [`Game_rules.md`](Game_rules.md) and [`todo.md`](todo.md).
+
+## Current implementation
+
+This repo includes an early **Python domain layer** (no web UI or database yet):
+
+| Module | Description |
+|--------|-------------|
+| [`user.py`](user.py) | `User`: `id`, `name`, getters, string representation, equality/hash |
+| [`league.py`](league.py) | `League`: `id`, `name`, list of `User`, `Settings` |
+| [`settings.py`](settings.py) | `Settings`: rule toggles (elimination, division rotation, comeback + streak length), `active_multiplier` / `eliminated_multiplier`, `set_multipliers()` |
+
+Tests live under [`test/`](test/) (`test_user.py`, `test_league.py`, `test_settings.py`).
+
+## Setup & tests
+
+Python **3.10+**. Install dev dependencies and run pytest from the repository root:
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+`pyproject.toml` sets `pythonpath = ["."]` so imports like `from user import User` resolve during tests.
+
+## Docs
+
+- **[Game_rules.md](Game_rules.md)** — gameplay rules (picks, points equation, optional modes).
+- **[todo.md](todo.md)** — roadmap (what’s done vs still planned).
