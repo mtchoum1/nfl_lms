@@ -17,6 +17,7 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 | **`settings.Settings`** | Elimination / division-rotation / comeback flags; `comeback_games_required`; `active_multiplier` & `eliminated_multiplier`; `set_multipliers()` — [`settings.py`](settings.py), [`test/test_settings.py`](test/test_settings.py) |
 | **Packaging / tests** | [`pyproject.toml`](pyproject.toml): `user`, `league`, `settings` modules; optional `dev` deps (`pytest`); `pythonpath = ["."]` for test imports |
 | **FastAPI scaffold** | [`app/main.py`](app/main.py): health + info + demo league JSON; [`render.yaml`](render.yaml) for Render Web Service; [`test/test_api.py`](test/test_api.py) |
+| **Lint / editor defaults** | [Ruff](https://docs.astral.sh/ruff/) in `[project.optional-dependencies] dev`; `[tool.ruff]` in [`pyproject.toml`](pyproject.toml); [`.editorconfig`](.editorconfig) |
 
 **Still outstanding for “full” models:** persistence, User email/auth, League season/week, NFL Team/Pick/Game models, and all rule/scoring logic below.
 
@@ -25,15 +26,15 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 ## Project setup
 
 - [x] Choose stack (FastAPI API + optional separate frontend; Render for hosting) — *Both*
-- [ ] Initialize repo (frontend + backend or monorepo) — *Both*
-- [ ] Set up dev environment, linting, and basic config — *Both*
+- [x] Initialize repo (frontend + backend or monorepo) — *Both*
+- [x] Set up dev environment, linting, and basic config — *Both* (venv/uv, Ruff, `.editorconfig`, `pyproject` tool sections)
 - [x] Add dependency management (Python: `pyproject.toml`, optional `[dev]` with pytest) — *Both*
 
 **Tests**
 
-- [ ] Build succeeds (`npm run build` or equivalent) — *Both*
+- [x] Build succeeds (`npm run build` or equivalent) — *Both* (`uv build` / wheel + sdist)
 - [x] Test script runs and exits 0 — `pytest` on `test/test_user.py`, `test/test_league.py`, `test/test_settings.py` — *Both*
-- [ ] Lint passes in CI or locally — *Both*
+- [x] Lint passes in CI or locally — *Both* (`ruff check .` / `ruff format .` after `pip install -e ".[dev]"` or `uv run ruff check .`)
 
 ---
 

@@ -41,12 +41,27 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 In the [Render](https://render.com/) dashboard, create a **Blueprint** from this repo or add a **Web Service** with the same build/start commands. Python version is controlled via the `PYTHON_VERSION` env var in the blueprint (adjust if Render’s supported runtimes change).
 
+## Development environment
+
+- **Python 3.10+** and a virtual environment (e.g. `python -m venv .venv` and activate it, or use [uv](https://github.com/astral-sh/uv)).
+- **Install (includes test + lint tools):** `pip install -e ".[dev]"` or, with uv, `uv sync --extra dev`.
+- **Editor:** [`.editorconfig`](.editorconfig) sets spacing and line endings for consistent diffs.
+- **Lint & format** ([Ruff](https://docs.astral.sh/ruff/), configured in `pyproject.toml`):
+
+  ```bash
+  ruff check .
+  ruff format .
+  ```
+
+  With uv: `uv run ruff check .` and `uv run ruff format .`
+
+- **Package build (no `npm` in this repo):** `uv build` or `python -m build` after `pip install build` — produces the wheel/sdist under `dist/`.
+
 ## Setup & tests
 
-Python **3.10+**. Install dev dependencies and run pytest from the repository root:
+From the repository root, with dev dependencies installed:
 
 ```bash
-pip install -e ".[dev]"
 pytest
 ```
 

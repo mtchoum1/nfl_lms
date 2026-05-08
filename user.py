@@ -5,7 +5,7 @@ class User:
 
     def get_id(self):
         return self.id
-    
+
     def get_name(self):
         return self.name
 
@@ -23,5 +23,3 @@ class User:
 
     def __hash__(self):
         return hash((self.id, self.name))
-
-    

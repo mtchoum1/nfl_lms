@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NFL Last Man Standing API",
         version="0.1.0",
-        description="Backend for Last Man Standing leagues (scaffold; domain logic in root modules).",
+        description="Last Man Standing API (scaffold). Domain rules live in root Python modules.",
     )
 
     cors_raw = os.getenv("CORS_ORIGINS", "*")
