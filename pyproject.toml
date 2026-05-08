@@ -32,6 +32,9 @@ include = ["app*"]
 testpaths = ["test"]
 pythonpath = ["."]
 addopts = "-ra"
+markers = [
+    "e2e: full-app API scenarios (end-to-end via TestClient, see test/e2e/)",
+]
 
 [tool.ruff]
 target-version = "py310"

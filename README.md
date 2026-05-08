@@ -71,6 +71,16 @@ pytest
 
 Optional live ESPN integration test (hits the network): set `NFL_LMS_LIVE_ESPN=1` and run `pytest test/test_espn_nfl.py -k live`.
 
+### End-to-end API tests
+
+Under [`test/e2e/`](test/e2e/), scenarios exercise multiple routes against the full FastAPI app (in-process via `TestClient`, with NFL data mocked for stable CI). Run them with:
+
+```bash
+pytest -m e2e
+```
+
+Or run the whole suite (includes e2e): `pytest`. On push/PR, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs **ruff** and **pytest**.
+
 ## Docs
 
 - **[Game_rules.md](Game_rules.md)** — gameplay rules (picks, points equation, optional modes).

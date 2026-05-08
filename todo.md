@@ -36,6 +36,7 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 - [x] Build succeeds (`npm run build` or equivalent) — *Both* (`uv build` / wheel + sdist)
 - [x] Test script runs and exits 0 — `pytest` on `test/test_user.py`, `test/test_league.py`, `test/test_settings.py` — *Both*
 - [x] Lint passes in CI or locally — *Both* (`ruff check .` / `ruff format .` after `pip install -e ".[dev]"` or `uv run ruff check .`)
+- [x] API end-to-end scenarios — *Backend* ([`test/e2e/`](test/e2e/), marker `e2e`; CI in [`.github/workflows/ci.yml`](.github/workflows/ci.yml))
 
 ---
 

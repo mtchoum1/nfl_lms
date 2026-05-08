@@ -13,6 +13,8 @@ nfl_lms.egg-info/dependency_links.txt
 nfl_lms.egg-info/requires.txt
 nfl_lms.egg-info/top_level.txt
 test/test_api.py
+test/test_espn_nfl.py
 test/test_league.py
 test/test_settings.py
+test/test_team.py
 test/test_user.py
