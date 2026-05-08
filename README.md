@@ -30,6 +30,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 - Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- `GET /` returns a small JSON map of useful paths (same on Render—open `/docs` for Swagger).
 - Optional CORS allowlist (comma-separated origins; default `*`): set env var `CORS_ORIGINS`, e.g. `http://localhost:5173,https://your-frontend.example`
 
 ## Deploy on Render

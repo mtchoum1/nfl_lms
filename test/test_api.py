@@ -7,6 +7,14 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_root():
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["service"] == "nfl-lms"
+    assert body["health"] == "/health"
+
+
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200

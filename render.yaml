@@ -6,7 +6,7 @@ services:
     name: nfl-lms-api
     runtime: python
     plan: free
-    buildCommand: pip install --upgrade pip && pip install .
+    buildCommand: uv sync --frozen && uv cache prune --ci
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION

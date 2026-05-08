@@ -54,6 +54,17 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.get("/", tags=["meta"])
+    def root() -> dict[str, str]:
+        """Service root (deploy health checks and browser visits often hit `/`)."""
+        return {
+            "service": "nfl-lms",
+            "docs": "/docs",
+            "openapi": "/openapi.json",
+            "health": "/health",
+            "info": "/api/v1/info",
+        }
+
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
         return {"status": "ok"}
