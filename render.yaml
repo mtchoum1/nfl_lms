@@ -1,0 +1,13 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Connect this repo in the Render dashboard and apply this file, or use "New Blueprint Instance".
+
+services:
+  - type: web
+    name: nfl-lms-api
+    runtime: python
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"

@@ -16,6 +16,7 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 | **`league.League`** | `id`, `name`, `users`, `settings` — [`league.py`](league.py), [`test/test_league.py`](test/test_league.py) |
 | **`settings.Settings`** | Elimination / division-rotation / comeback flags; `comeback_games_required`; `active_multiplier` & `eliminated_multiplier`; `set_multipliers()` — [`settings.py`](settings.py), [`test/test_settings.py`](test/test_settings.py) |
 | **Packaging / tests** | [`pyproject.toml`](pyproject.toml): `user`, `league`, `settings` modules; optional `dev` deps (`pytest`); `pythonpath = ["."]` for test imports |
+| **FastAPI scaffold** | [`app/main.py`](app/main.py): health + info + demo league JSON; [`render.yaml`](render.yaml) for Render Web Service; [`test/test_api.py`](test/test_api.py) |
 
 **Still outstanding for “full” models:** persistence, User email/auth, League season/week, NFL Team/Pick/Game models, and all rule/scoring logic below.
 
@@ -23,7 +24,7 @@ Domain models and tests exist as plain Python modules at the repo root (no API o
 
 ## Project setup
 
-- [ ] Choose stack (e.g. React/Next.js + Node/API, or full-stack framework) — *Both*
+- [x] Choose stack (FastAPI API + optional separate frontend; Render for hosting) — *Both*
 - [ ] Initialize repo (frontend + backend or monorepo) — *Both*
 - [ ] Set up dev environment, linting, and basic config — *Both*
 - [x] Add dependency management (Python: `pyproject.toml`, optional `[dev]` with pytest) — *Both*
