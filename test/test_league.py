@@ -6,6 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from database_fake import InMemoryDatabase
+from firebase_store import LEAGUES_PATH
 from league import League
 from settings import Settings
 from user import User
@@ -55,3 +57,23 @@ def test_league_firestore_roundtrip():
     assert restored.settings.division_rotation_rule is True
     assert restored.settings.comeback_games_required == 3
     assert restored.settings.eliminated_multiplier == 2.5
+
+
+def test_league_create_in_database_roundtrip():
+    db = InMemoryDatabase()
+    league = League.create_in_database(
+        "Sunday League",
+        [User("u1", "Alice"), User("u2", "Bob")],
+        Settings(division_rotation_rule=True, comeback_games_required=4),
+        league_id="league-rtdb-1",
+        db_module=db,
+    )
+    assert db.get_node(f"{LEAGUES_PATH}/league-rtdb-1") == league.to_firestore_dict()
+
+    restored = League.load_from_database("league-rtdb-1", db_module=db)
+    assert restored is not None
+    assert restored.get_id() == "league-rtdb-1"
+    assert restored.get_name() == "Sunday League"
+    assert len(restored.users) == 2
+    assert restored.settings.division_rotation_rule is True
+    assert restored.settings.comeback_games_required == 4

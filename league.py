@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from firebase_store import LEAGUES_PATH
 from settings import Settings
 from user import User
+
+
+class LeagueAlreadyExistsError(ValueError):
+    """Raised when creating a league whose id is already in the database."""
 
 
 class League:
@@ -26,6 +31,7 @@ class League:
     def to_firestore_dict(self) -> dict[str, Any]:
         """Payload for ``leagues/{league_id}`` in the Realtime Database."""
         return {
+            "id": str(self.id),
             "name": self.name,
             "users": [u.to_firestore_dict() for u in self.users],
             "settings": self.settings.to_firestore_dict(),
@@ -38,7 +44,30 @@ class League:
         users = [User.from_firestore_dict(u) for u in raw_users]
         settings_raw = data.get("settings") or {}
         settings = Settings.from_firestore_dict(settings_raw)
-        return cls(id=league_id, name=data["name"], users=users, settings=settings)
+        lid = str(data.get("id", league_id))
+        return cls(id=lid, name=data["name"], users=users, settings=settings)
+
+    @classmethod
+    def create_in_database(
+        cls,
+        name: str,
+        users: list[User],
+        settings: Settings,
+        *,
+        league_id: str | None = None,
+        db_module=None,
+    ) -> League:
+        """Create a new league at ``leagues/{id}`` with users and settings."""
+        if db_module is None:
+            from firebase_store import get_database
+
+            db_module = get_database()
+        lid = league_id or f"league-{uuid.uuid4().hex[:12]}"
+        if cls.load_from_database(lid, db_module=db_module) is not None:
+            raise LeagueAlreadyExistsError(lid)
+        league = cls(lid, name, users, settings)
+        league.save_to_database(db_module=db_module)
+        return league
 
     def save_to_database(self, db_module=None) -> None:
         """Persist at ``leagues/{id}`` in the Realtime Database."""

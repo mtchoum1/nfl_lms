@@ -13,15 +13,15 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 | Deliverable | Notes |
 |-------------|--------|
 | **`user.User`** | `id`, `name`, `email`; Firebase Auth signup (`create_with_email_password`); Realtime Database CRUD — [`user.py`](user.py), [`test/test_user.py`](test/test_user.py), [`test/test_database_models.py`](test/test_database_models.py) |
-| **`league.League`** | `id`, `name`, `users`, `settings`; Realtime Database CRUD — [`league.py`](league.py), [`test/test_league.py`](test/test_league.py), [`test/test_database_models.py`](test/test_database_models.py) |
+| **`league.League`** | `id`, `name`, `users`, `settings`; `create_in_database()`; RTDB CRUD — [`league.py`](league.py), [`POST/GET/PUT /api/v1/leagues`](app/main.py), [`test/test_league.py`](test/test_league.py), [`test/test_database_models.py`](test/test_database_models.py), [`test/e2e/test_league_create.py`](test/e2e/test_league_create.py) |
 | **`settings.Settings`** | Elimination / division-rotation / comeback flags; `comeback_games_required`; `active_multiplier` & `eliminated_multiplier`; `set_multipliers()` — [`settings.py`](settings.py), [`test/test_settings.py`](test/test_settings.py) |
 | **`firebase_store`** | Firebase Admin SDK (lazy init, `.env` loading, service account vs ADC credentials, Auth + Realtime Database) — [`firebase_store.py`](firebase_store.py), [`test/test_firebase_store.py`](test/test_firebase_store.py) |
 | **Packaging / tests** | [`pyproject.toml`](pyproject.toml): domain modules + `firebase-admin`, `python-dotenv`; optional `dev` deps; `pythonpath = ["."]`; markers `e2e`, `firebase` |
-| **FastAPI API** | Health, demo league, NFL teams, **`POST /api/v1/users`** (signup), user/league Realtime Database routes — [`app/main.py`](app/main.py), [`render.yaml`](render.yaml), [`test/test_api.py`](test/test_api.py), [`test/e2e/`](test/e2e/) |
+| **FastAPI API** | Health, demo league, NFL teams, **`POST /api/v1/users`** (signup), **`POST /api/v1/leagues`** (create), user/league RTDB routes — [`app/main.py`](app/main.py), [`render.yaml`](render.yaml), [`test/test_api.py`](test/test_api.py), [`test/e2e/`](test/e2e/) |
 | **Lint / editor defaults** | [Ruff](https://docs.astral.sh/ruff/) in `[project.optional-dependencies] dev`; `[tool.ruff]` in [`pyproject.toml`](pyproject.toml); [`.editorconfig`](.editorconfig) |
 | **`team.Team` + ESPN fetch** | [`team.py`](team.py), [`espn_nfl.py`](espn_nfl.py) (`fetch_nfl_teams`), [`GET /api/v1/nfl/teams`](app/main.py); tests [`test/test_team.py`](test/test_team.py), [`test/test_espn_nfl.py`](test/test_espn_nfl.py) |
 | **Frontend scaffold** | Vite + TypeScript + Firebase client init — [`web/`](web/), [`web/README.md`](web/README.md) |
-| **Docs / env** | Root [`README.md`](README.md), [`.env.example`](.env.example), [`web/.env.example`](web/.env.example) |
+| **Docs / env** | Root [`README.md`](README.md), [`.env.example`](.env.example) (`FIREBASE_DATABASE_URL`), [`web/.env.example`](web/.env.example) |
 
 **Still outstanding for “full” models:** sign-in/session, League season/week, Pick/Game models, and all rule/scoring logic below.
 
@@ -46,7 +46,7 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 ## Data & models
 
 - [x] Define **User** model (`id`, `name`, `email`; Firebase Auth signup; Realtime Database CRUD) — [`user.py`](user.py), [`POST/GET/PUT /api/v1/users`](app/main.py) — *Backend*
-- [ ] Define **League** model (users, settings, **Realtime Database persistence done** in [`league.py`](league.py); season, week **TBD**) — *Backend*
+- [x] Define **League** model (`id`, `name`, `users`, `settings`; `create_in_database`; RTDB CRUD) — [`league.py`](league.py), [`POST/GET/PUT /api/v1/leagues`](app/main.py) — *Backend* (season, week **TBD**)
 - [x] Define **League settings** (elimination on/off, division rule on/off, comeback rule on/off, comeback games count; optional multipliers) — [`settings.py`](settings.py) — *Backend*
 - [x] Define **Team** model (NFL teams + divisions) — *Backend* [`team.py`](team.py), [`espn_nfl.py`](espn_nfl.py), [`GET /api/v1/nfl/teams`](app/main.py)
 - [ ] Define **Pick** model (user, league, week, team, game, result) — *Backend*
@@ -56,7 +56,7 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 **Tests**
 
 - [ ] Model validation (required fields, constraints) — unit or schema tests — *Backend*
-- [ ] CRUD / DB operations for each model (create, read, update where applicable) — *Backend* (**User + League RTDB done**; Pick/Game TBD)
+- [ ] CRUD / DB operations for each model (create, read, update where applicable) — *Backend* (**User + League create/read/update in RTDB done**; delete API + Pick/Game TBD)
 - [x] Seed or fetch loads teams/divisions without error — *Backend* (`fetch_nfl_teams`; schedule TBD)
 
 ---
@@ -100,14 +100,15 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 
 ## Leagues & membership
 
-- [ ] Create league (name + game settings) — *Both* (**RTDB PUT exists**; UI + invite flow **TBD**)
+- [x] Create league (name + users + settings → RTDB) — *Backend* (`League.create_in_database`, **`POST /api/v1/leagues`**; UI + invite flow **TBD**) — *Both*
 - [ ] Join league (code or invite link) — *Both*
-- [ ] League roster and roles (owner, member) — *Backend*
-- [ ] League settings editable by owner (where applicable) — *Both*
+- [ ] League roster and roles (owner, member) — *Backend* (**users embedded on league node**; roles **TBD**)
+- [ ] League settings editable by owner (where applicable) — *Both* (**`PUT /api/v1/leagues/{id}`** exists; owner check **TBD**)
 
 **Tests**
 
-- [ ] Create league persists and returns league + invite code/link — *Backend*
+- [x] Create league persists users and settings in RTDB (unit + API + e2e) — *Backend* [`test/test_database_models.py`](test/test_database_models.py), [`test/e2e/test_league_create.py`](test/e2e/test_league_create.py), live opt-in [`test/test_firebase_integration.py`](test/test_firebase_integration.py)
+- [ ] Create league returns invite code/link — *Backend*
 - [ ] Join league by code/link adds user to roster — *Backend*
 - [ ] Non-member cannot access league; member can — *Both*
 - [ ] Only owner can edit league settings (or role check) — *Both*
@@ -190,7 +191,7 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 - [ ] Dark/light theme — *Frontend*
 - [ ] Export standings or history (e.g. CSV) — *Both*
 - [x] Basic tests for domain models (`User`, `League`, `Settings`) — *Backend*
-- [x] Realtime Database persistence tests (mocked + opt-in live) — *Backend* [`test/test_database_models.py`](test/test_database_models.py), [`test/test_firebase_integration.py`](test/test_firebase_integration.py)
+- [x] Realtime Database persistence tests (mocked + opt-in live) — *Backend* [`test/test_database_models.py`](test/test_database_models.py), [`test/test_firebase_integration.py`](test/test_firebase_integration.py), e2e [`test/e2e/test_user_signup.py`](test/e2e/test_user_signup.py), [`test/e2e/test_league_create.py`](test/e2e/test_league_create.py)
 - [ ] Tests for scoring and rule logic (points equation, elimination, comeback, etc.) — *Backend*
 - [ ] Deploy (e.g. Vercel + DB) and env/config for production — *Both* (**Render API blueprint** in [`render.yaml`](render.yaml); Firebase env + frontend deploy **TBD**)
 
@@ -198,7 +199,7 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 
 - [ ] Responsive: key flows work on narrow viewport (manual or e2e) — *Frontend*
 - [ ] Export standings/history returns correct data (unit or integration) — *Backend*
-- [ ] Smoke or e2e: sign in → join league → make pick → view standings — *Both*
+- [ ] Smoke or e2e: sign in → join league → make pick → view standings — *Both* (**user signup + league create e2e done**; join/pick/standings **TBD**)
 
 ---
 

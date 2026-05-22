@@ -11,7 +11,7 @@ from firebase_admin import auth as firebase_auth
 from pydantic import BaseModel
 
 from espn_nfl import fetch_nfl_teams
-from league import League
+from league import League, LeagueAlreadyExistsError
 from settings import Settings
 from team import Team
 from user import User
@@ -57,12 +57,32 @@ class UserSignupBody(BaseModel):
 class LeagueUserRef(BaseModel):
     id: str
     name: str
+    email: str | None = None
 
 
 class LeagueWriteBody(BaseModel):
     name: str
     users: list[LeagueUserRef]
     settings: dict[str, Any]
+
+
+class LeagueCreateBody(LeagueWriteBody):
+    """Optional client-supplied id; otherwise the server generates one."""
+
+    id: str | None = None
+
+
+def _users_from_league_refs(refs: list[LeagueUserRef]) -> list[User]:
+    return [User(u.id, u.name, u.email) for u in refs]
+
+
+def _league_from_write_body(league_id: str, body: LeagueWriteBody) -> League:
+    return League(
+        league_id,
+        body.name,
+        _users_from_league_refs(body.users),
+        Settings.from_firestore_dict(body.settings),
+    )
 
 
 def _team_to_dict(team: Team) -> dict:
@@ -111,6 +131,7 @@ def create_app() -> FastAPI:
             "nfl_teams": "/api/v1/nfl/teams",
             "users_signup": "/api/v1/users",
             "users_crud": "/api/v1/users/{user_id}",
+            "leagues_create": "/api/v1/leagues",
             "leagues_crud": "/api/v1/leagues/{league_id}",
         }
 
@@ -173,6 +194,20 @@ def create_app() -> FastAPI:
         user.save_to_database()
         return _user_to_dict(user)
 
+    @app.post("/api/v1/leagues", tags=["database"], status_code=201)
+    def post_league(body: LeagueCreateBody) -> dict:
+        """Create a league in the Realtime Database with users and settings."""
+        try:
+            league = League.create_in_database(
+                body.name,
+                _users_from_league_refs(body.users),
+                Settings.from_firestore_dict(body.settings),
+                league_id=body.id,
+            )
+        except LeagueAlreadyExistsError:
+            raise HTTPException(status_code=409, detail="League already exists") from None
+        return _league_to_dict(league)
+
     @app.get("/api/v1/leagues/{league_id}", tags=["database"])
     def get_league(league_id: str) -> dict:
         league = League.load_from_database(league_id)
@@ -182,9 +217,7 @@ def create_app() -> FastAPI:
 
     @app.put("/api/v1/leagues/{league_id}", tags=["database"])
     def put_league(league_id: str, body: LeagueWriteBody) -> dict:
-        users = [User(u.id, u.name) for u in body.users]
-        settings = Settings.from_firestore_dict(body.settings)
-        league = League(league_id, body.name, users, settings)
+        league = _league_from_write_body(league_id, body)
         league.save_to_database()
         return _league_to_dict(league)
 

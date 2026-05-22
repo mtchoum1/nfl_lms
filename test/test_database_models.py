@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from database_fake import InMemoryDatabase
-from firebase_store import USERS_PATH
-from league import League
+from firebase_store import LEAGUES_PATH, USERS_PATH
+from league import League, LeagueAlreadyExistsError
 from settings import Settings
 from user import User
 
@@ -171,6 +172,143 @@ def test_league_load_from_database():
     assert got.users[0].get_name() == "A"
 
 
+def _sample_league_body(*, league_id: str | None = "L-create-1") -> dict:
+    body: dict = {
+        "name": "West",
+        "users": [{"id": "a", "name": "A", "email": "a@x.com"}],
+        "settings": {
+            "elimination_on_loss": True,
+            "division_rotation_rule": False,
+            "comeback_rule": False,
+            "comeback_games_required": 2,
+            "active_multiplier": 1.0,
+        },
+    }
+    if league_id is not None:
+        body["id"] = league_id
+    return body
+
+
+def test_league_create_in_database_persists_users_and_settings():
+    db = InMemoryDatabase()
+
+    league = League.create_in_database(
+        "Sunday League",
+        [User("u1", "Alice", "a@x.com"), User("u2", "Bob")],
+        Settings(elimination_on_loss=False, comeback_games_required=3),
+        league_id="league-test-1",
+        db_module=db,
+    )
+
+    assert league.get_id() == "league-test-1"
+    stored = db.get_node(f"{LEAGUES_PATH}/league-test-1")
+    assert stored == {
+        "id": "league-test-1",
+        "name": "Sunday League",
+        "users": [
+            {"id": "u1", "name": "Alice", "email": "a@x.com"},
+            {"id": "u2", "name": "Bob"},
+        ],
+        "settings": {
+            "elimination_on_loss": False,
+            "division_rotation_rule": False,
+            "comeback_rule": False,
+            "comeback_games_required": 3,
+            "active_multiplier": 1.0,
+        },
+    }
+
+    loaded = League.load_from_database("league-test-1", db_module=db)
+    assert loaded is not None
+    assert loaded.get_name() == "Sunday League"
+    assert len(loaded.users) == 2
+    assert loaded.users[0].get_email() == "a@x.com"
+    assert loaded.settings.comeback_games_required == 3
+
+
+def test_league_create_in_database_generates_id():
+    db = InMemoryDatabase()
+
+    league = League.create_in_database(
+        "Auto Id League",
+        [User("u1", "Alice")],
+        Settings(),
+        db_module=db,
+    )
+
+    assert str(league.get_id()).startswith("league-")
+    assert db.get_node(f"{LEAGUES_PATH}/{league.get_id()}") is not None
+
+
+def test_league_create_in_database_rejects_duplicate_id():
+    db = InMemoryDatabase()
+    League.create_in_database("First", [], Settings(), league_id="dup-league", db_module=db)
+
+    with pytest.raises(LeagueAlreadyExistsError):
+        League.create_in_database("Second", [], Settings(), league_id="dup-league", db_module=db)
+
+    assert db.get_node(f"{LEAGUES_PATH}/dup-league")["name"] == "First"
+
+
+def test_api_post_league_persists_to_database():
+    db = InMemoryDatabase()
+    body = _sample_league_body()
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.post("/api/v1/leagues", json=body)
+
+    assert r.status_code == 201
+    payload = r.json()
+    assert payload["id"] == "L-create-1"
+    assert payload["name"] == "West"
+    assert payload["users"] == [{"id": "a", "name": "A", "email": "a@x.com"}]
+    assert payload["settings"]["elimination_on_loss"] is True
+
+    stored = db.get_node(f"{LEAGUES_PATH}/L-create-1")
+    assert stored["name"] == "West"
+    assert stored["users"][0]["email"] == "a@x.com"
+    assert stored["settings"]["comeback_games_required"] == 2
+
+    with patch("firebase_store.get_database", return_value=db):
+        get_r = client.get("/api/v1/leagues/L-create-1")
+    assert get_r.status_code == 200
+    assert get_r.json() == payload
+
+
+def test_api_post_league_generates_id_in_database():
+    db = InMemoryDatabase()
+    body = _sample_league_body(league_id=None)
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.post("/api/v1/leagues", json=body)
+
+    assert r.status_code == 201
+    league_id = r.json()["id"]
+    assert str(league_id).startswith("league-")
+    assert db.get_node(f"{LEAGUES_PATH}/{league_id}")["name"] == "West"
+
+
+def test_api_post_league_409_when_id_exists():
+    db = InMemoryDatabase()
+    body = _sample_league_body(league_id="L-dup")
+    League.create_in_database(
+        "Existing",
+        [],
+        Settings(),
+        league_id="L-dup",
+        db_module=db,
+    )
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.post("/api/v1/leagues", json=body)
+
+    assert r.status_code == 409
+    assert db.get_node(f"{LEAGUES_PATH}/L-dup")["name"] == "Existing"
+
+
 def test_api_get_user_404_when_not_in_database():
     with patch("app.main.User.load_from_database", return_value=None):
         client = TestClient(app)
@@ -247,6 +385,19 @@ def test_api_get_league_404():
         client = TestClient(app)
         r = client.get("/api/v1/leagues/missing")
     assert r.status_code == 404
+
+
+def test_api_put_league_persists_to_database():
+    db = InMemoryDatabase()
+    body = _sample_league_body(league_id="L-put-1")
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.put("/api/v1/leagues/L-put-1", json=body)
+
+    assert r.status_code == 200
+    assert r.json()["id"] == "L-put-1"
+    assert db.get_node(f"{LEAGUES_PATH}/L-put-1")["name"] == "West"
 
 
 def test_api_put_league_calls_save():

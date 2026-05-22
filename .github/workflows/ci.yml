@@ -8,6 +8,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    environment: nfl_lms
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +26,7 @@ jobs:
         run: uv run ruff check .
 
       - name: Tests (unit + e2e)
-        run: uv run pytest
+        run: uv run pytest -v
         env:
           NFL_LMS_LIVE_ESPN: 1
           FIREBASE_TEST: 1
