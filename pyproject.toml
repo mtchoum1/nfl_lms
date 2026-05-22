@@ -32,7 +32,7 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-pythonpath = ["."]
+pythonpath = [".", "test"]
 addopts = "-ra"
 markers = [
     "e2e: full-app API scenarios (end-to-end via TestClient, see test/e2e/)",

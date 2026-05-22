@@ -10,7 +10,7 @@ from app.main import app
 from firebase_store import USERS_PATH
 from league import League
 from settings import Settings
-from test.database_fake import InMemoryDatabase
+from database_fake import InMemoryDatabase
 from user import User
 
 
