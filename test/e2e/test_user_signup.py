@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from firebase_store import USERS_PATH
 from database_fake import InMemoryDatabase
+from firebase_store import USERS_PATH
 from user import User
 
 pytestmark = pytest.mark.e2e

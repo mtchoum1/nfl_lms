@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
+from database_fake import InMemoryDatabase
 from firebase_store import USERS_PATH
 from league import League
 from settings import Settings
-from database_fake import InMemoryDatabase
 from user import User
 
 
