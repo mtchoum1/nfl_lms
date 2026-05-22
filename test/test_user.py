@@ -87,3 +87,14 @@ def test_user_hash_different_name_but_same_id():
     a = User(1, "Alice")
     b = User(1, "Bob")
     assert hash(a) != hash(b)
+
+
+def test_user_email_getter_and_repr():
+    user = User("uid", "Jane", "jane@example.com")
+    assert user.get_email() == "jane@example.com"
+    assert repr(user) == "User(id=uid, name=Jane, email=jane@example.com)"
+
+
+def test_user_equality_includes_email():
+    assert User(1, "Alice", "a@x.com") == User(1, "Alice", "a@x.com")
+    assert User(1, "Alice", "a@x.com") != User(1, "Alice", "b@x.com")

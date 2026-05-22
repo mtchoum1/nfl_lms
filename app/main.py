@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from firebase_admin import auth as firebase_auth
 from pydantic import BaseModel
 
 from espn_nfl import fetch_nfl_teams
@@ -28,7 +29,10 @@ def _settings_to_dict(settings: Settings) -> dict:
 
 
 def _user_to_dict(user: User) -> dict:
-    return {"id": user.get_id(), "name": user.get_name()}
+    data: dict[str, Any] = {"id": user.get_id(), "name": user.get_name()}
+    if user.get_email() is not None:
+        data["email"] = user.get_email()
+    return data
 
 
 def _league_to_dict(league: League) -> dict:
@@ -42,6 +46,12 @@ def _league_to_dict(league: League) -> dict:
 
 class UserWriteBody(BaseModel):
     name: str
+
+
+class UserSignupBody(BaseModel):
+    name: str
+    email: str
+    password: str
 
 
 class LeagueUserRef(BaseModel):
@@ -99,6 +109,7 @@ def create_app() -> FastAPI:
             "health": "/health",
             "info": "/api/v1/info",
             "nfl_teams": "/api/v1/nfl/teams",
+            "users_signup": "/api/v1/users",
             "users_crud": "/api/v1/users/{user_id}",
             "leagues_crud": "/api/v1/leagues/{league_id}",
         }
@@ -137,6 +148,17 @@ def create_app() -> FastAPI:
         """All NFL teams with divisions (live ESPN HTTP calls; cache in production)."""
         teams = fetch_nfl_teams()
         return [_team_to_dict(t) for t in teams]
+
+    @app.post("/api/v1/users", tags=["firestore"], status_code=201)
+    def post_user_signup(body: UserSignupBody) -> dict:
+        """Create Firebase Auth (email/password) and Firestore profile; id is the Auth UID."""
+        try:
+            user = User.create_with_email_password(body.name, body.email, body.password)
+        except firebase_auth.EmailAlreadyExistsError:
+            raise HTTPException(status_code=409, detail="Email already registered") from None
+        except firebase_auth.InvalidPasswordError:
+            raise HTTPException(status_code=400, detail="Invalid password") from None
+        return _user_to_dict(user)
 
     @app.get("/api/v1/users/{user_id}", tags=["firestore"])
     def get_user_firestore(user_id: str) -> dict:
