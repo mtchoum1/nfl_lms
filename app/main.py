@@ -149,9 +149,9 @@ def create_app() -> FastAPI:
         teams = fetch_nfl_teams()
         return [_team_to_dict(t) for t in teams]
 
-    @app.post("/api/v1/users", tags=["firestore"], status_code=201)
+    @app.post("/api/v1/users", tags=["database"], status_code=201)
     def post_user_signup(body: UserSignupBody) -> dict:
-        """Create Firebase Auth (email/password) and Firestore profile; id is the Auth UID."""
+        """Create Firebase Auth (email/password) and Realtime Database profile; id is Auth UID."""
         try:
             user = User.create_with_email_password(body.name, body.email, body.password)
         except firebase_auth.EmailAlreadyExistsError:
@@ -160,32 +160,32 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="Invalid password") from None
         return _user_to_dict(user)
 
-    @app.get("/api/v1/users/{user_id}", tags=["firestore"])
-    def get_user_firestore(user_id: str) -> dict:
-        user = User.load_from_firestore(user_id)
+    @app.get("/api/v1/users/{user_id}", tags=["database"])
+    def get_user(user_id: str) -> dict:
+        user = User.load_from_database(user_id)
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         return _user_to_dict(user)
 
-    @app.put("/api/v1/users/{user_id}", tags=["firestore"])
-    def put_user_firestore(user_id: str, body: UserWriteBody) -> dict:
+    @app.put("/api/v1/users/{user_id}", tags=["database"])
+    def put_user(user_id: str, body: UserWriteBody) -> dict:
         user = User(user_id, body.name)
-        user.save_to_firestore()
+        user.save_to_database()
         return _user_to_dict(user)
 
-    @app.get("/api/v1/leagues/{league_id}", tags=["firestore"])
-    def get_league_firestore(league_id: str) -> dict:
-        league = League.load_from_firestore(league_id)
+    @app.get("/api/v1/leagues/{league_id}", tags=["database"])
+    def get_league(league_id: str) -> dict:
+        league = League.load_from_database(league_id)
         if league is None:
             raise HTTPException(status_code=404, detail="League not found")
         return _league_to_dict(league)
 
-    @app.put("/api/v1/leagues/{league_id}", tags=["firestore"])
-    def put_league_firestore(league_id: str, body: LeagueWriteBody) -> dict:
+    @app.put("/api/v1/leagues/{league_id}", tags=["database"])
+    def put_league(league_id: str, body: LeagueWriteBody) -> dict:
         users = [User(u.id, u.name) for u in body.users]
         settings = Settings.from_firestore_dict(body.settings)
         league = League(league_id, body.name, users, settings)
-        league.save_to_firestore()
+        league.save_to_database()
         return _league_to_dict(league)
 
     return app

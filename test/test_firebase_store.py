@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from firebase_admin import credentials
 
-from firestore_store import _load_credentials
+from firebase_store import _load_credentials
 
 
 def test_load_credentials_uses_certificate_for_service_account(tmp_path, monkeypatch):

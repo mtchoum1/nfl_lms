@@ -1,4 +1,4 @@
-"""Firebase Admin SDK + Firestore client (lazy init)."""
+"""Firebase Admin SDK + Realtime Database (lazy init)."""
 
 from __future__ import annotations
 
@@ -6,10 +6,11 @@ import os
 from pathlib import Path
 
 import firebase_admin
-from firebase_admin import auth, credentials, firestore
+from firebase_admin import auth, credentials, db
 
-USERS_COLLECTION = "users"
-LEAGUES_COLLECTION = "leagues"
+DEFAULT_DATABASE_URL = "https://nfl-lms-default-rtdb.firebaseio.com"
+USERS_PATH = "users"
+LEAGUES_PATH = "leagues"
 
 _dotenv_loaded = False
 
@@ -26,6 +27,10 @@ def _load_dotenv_once() -> None:
 
 def _project_id() -> str:
     return os.getenv("FIREBASE_PROJECT_ID", "nfl-lms")
+
+
+def _database_url() -> str:
+    return os.getenv("FIREBASE_DATABASE_URL", DEFAULT_DATABASE_URL).strip()
 
 
 def _load_credentials():
@@ -48,13 +53,19 @@ def ensure_firebase_app() -> None:
         return
     project_id = _project_id()
     cred = _load_credentials()
-    firebase_admin.initialize_app(cred, {"projectId": project_id})
+    firebase_admin.initialize_app(
+        cred,
+        {
+            "projectId": project_id,
+            "databaseURL": _database_url(),
+        },
+    )
 
 
-def get_firestore_client():
-    """Return a Firestore client; call :func:`ensure_firebase_app` first."""
+def get_database():
+    """Return the Realtime Database module; call :func:`ensure_firebase_app` first."""
     ensure_firebase_app()
-    return firestore.client()
+    return db
 
 
 def get_auth():

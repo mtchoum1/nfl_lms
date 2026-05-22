@@ -2,7 +2,7 @@
 
 Minimal **Vite + TypeScript** frontend for the NFL Last Man Standing app. Firebase client SDK is initialized in [`src/firebase.ts`](src/firebase.ts) (Analytics enabled).
 
-User sign-up and Firestore profiles are handled by the **Python API** (`POST /api/v1/users` on the backend); this app holds Firebase web config for future client-side auth and UI.
+User sign-up and Realtime Database profiles are handled by the **Python API** (`POST /api/v1/users` on the backend); this app holds Firebase web config for future client-side auth and UI.
 
 ## Setup
 

@@ -1,6 +1,6 @@
 README.md
 espn_nfl.py
-firestore_store.py
+firebase_store.py
 league.py
 pyproject.toml
 settings.py
@@ -14,9 +14,10 @@ nfl_lms.egg-info/dependency_links.txt
 nfl_lms.egg-info/requires.txt
 nfl_lms.egg-info/top_level.txt
 test/test_api.py
+test/test_database_models.py
 test/test_espn_nfl.py
-test/test_firestore_integration.py
-test/test_firestore_models.py
+test/test_firebase_integration.py
+test/test_firebase_store.py
 test/test_league.py
 test/test_settings.py
 test/test_team.py

@@ -4,19 +4,19 @@ NFL **Last Man Standing** game — product planning lives in [`Game_rules.md`](G
 
 ## Current implementation
 
-This repo includes a **Python domain layer**, a **FastAPI** HTTP API, and **Firebase** (Auth + Firestore) persistence. A minimal **Vite/TypeScript** frontend lives in [`web/`](web/).
+This repo includes a **Python domain layer**, a **FastAPI** HTTP API, and **Firebase** (Auth + Realtime Database) persistence. A minimal **Vite/TypeScript** frontend lives in [`web/`](web/).
 
 | Module | Description |
 |--------|-------------|
-| [`user.py`](user.py) | `User`: `id`, `name`, optional `email`; Firebase Auth signup via `create_with_email_password()`; Firestore CRUD |
-| [`league.py`](league.py) | `League`: `id`, `name`, list of `User`, `Settings`; Firestore CRUD |
+| [`user.py`](user.py) | `User`: `id`, `name`, optional `email`; Firebase Auth signup via `create_with_email_password()`; Realtime Database CRUD |
+| [`league.py`](league.py) | `League`: `id`, `name`, list of `User`, `Settings`; Realtime Database CRUD |
 | [`settings.py`](settings.py) | `Settings`: rule toggles (elimination, division rotation, comeback + streak length), multipliers |
 | [`team.py`](team.py) | `Team`: ESPN id, abbreviation, names, division + conference |
 | [`espn_nfl.py`](espn_nfl.py) | `fetch_nfl_teams()`: loads 32 teams + divisions from ESPN HTTP APIs |
-| [`firestore_store.py`](firestore_store.py) | Firebase Admin SDK (lazy init, `.env` loading, Auth + Firestore clients) |
-| [`app/main.py`](app/main.py) | FastAPI: health, demo league, NFL teams, user signup, user/league Firestore routes |
+| [`firebase_store.py`](firebase_store.py) | Firebase Admin SDK (lazy init, `.env` loading, Auth + Realtime Database) |
+| [`app/main.py`](app/main.py) | FastAPI: health, demo league, NFL teams, user signup, user/league database routes |
 
-Tests live under [`test/`](test/) (domain models, API, Firestore mocks, optional live Firebase/ESPN integration).
+Tests live under [`test/`](test/) (domain models, API, database mocks, optional live Firebase/ESPN integration).
 
 ## Firebase configuration (backend)
 
@@ -29,6 +29,7 @@ cp .env.example .env
 | Variable | Purpose |
 |----------|---------|
 | `FIREBASE_PROJECT_ID` | Firebase / GCP project id (default `nfl-lms`) |
+| `FIREBASE_DATABASE_URL` | Realtime Database URL (default `https://nfl-lms-default-rtdb.firebaseio.com`) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to credentials JSON (optional; see below) |
 
 The API loads `.env` automatically on first Firebase access.
@@ -36,7 +37,7 @@ The API loads `.env` automatically on first Firebase access.
 **Credentials**
 
 - **Service account JSON** (`type: service_account`) — recommended for production and for creating Auth users via the Admin SDK. Download from Firebase console → Project settings → Service accounts.
-- **Application Default Credentials** — from `gcloud auth application-default login`. Supported for local Firestore access; creating Auth users may require a service account with the right IAM roles.
+- **Application Default Credentials** — from `gcloud auth application-default login`. Supported for local database access; creating Auth users may require a service account with the right IAM roles.
 
 If `GOOGLE_APPLICATION_CREDENTIALS` is unset, the Admin SDK falls back to Application Default Credentials.
 
@@ -63,10 +64,10 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/users` | Sign up: creates Firebase Auth user (email/password) and Firestore doc at `users/{uid}` |
-| `GET` | `/api/v1/users/{user_id}` | Load user profile from Firestore |
-| `PUT` | `/api/v1/users/{user_id}` | Update user name in Firestore (does not create Auth users) |
-| `GET` / `PUT` | `/api/v1/leagues/{league_id}` | Read / write league in Firestore |
+| `POST` | `/api/v1/users` | Sign up: creates Firebase Auth user (email/password) and RTDB node at `users/{uid}` |
+| `GET` | `/api/v1/users/{user_id}` | Load user profile from Realtime Database |
+| `PUT` | `/api/v1/users/{user_id}` | Update user name in Realtime Database (does not create Auth users) |
+| `GET` / `PUT` | `/api/v1/leagues/{league_id}` | Read / write league in Realtime Database |
 | `GET` | `/api/v1/nfl/teams` | All NFL teams (live ESPN) |
 
 **Sign up example**
@@ -122,7 +123,7 @@ pytest
 | Env | Command |
 |-----|---------|
 | `NFL_LMS_LIVE_ESPN=1` | Live ESPN fetch: `pytest test/test_espn_nfl.py -k live` |
-| `FIREBASE_TEST=1` plus credentials or `FIRESTORE_EMULATOR_HOST` | Live Firestore roundtrips: `pytest test/test_firestore_integration.py` |
+| `FIREBASE_TEST=1` plus credentials or `FIREBASE_DATABASE_EMULATOR_HOST` | Live Realtime Database roundtrips: `pytest test/test_firebase_integration.py` |
 
 ### End-to-end API tests
 

@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["user", "league", "settings", "team", "espn_nfl", "firestore_store"]
+py-modules = ["user", "league", "settings", "team", "espn_nfl", "firebase_store"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -36,7 +36,7 @@ pythonpath = ["."]
 addopts = "-ra"
 markers = [
     "e2e: full-app API scenarios (end-to-end via TestClient, see test/e2e/)",
-    "firebase: live Firestore (requires FIREBASE_TEST=1 and credentials or emulator; see test_firestore_integration.py)",
+    "firebase: live Realtime Database (requires FIREBASE_TEST=1 and credentials or emulator; see test_firebase_integration.py)",
 ]
 
 [tool.ruff]

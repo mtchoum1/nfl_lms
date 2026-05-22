@@ -1,6 +1,6 @@
 app
 espn_nfl
-firestore_store
+firebase_store
 league
 settings
 team

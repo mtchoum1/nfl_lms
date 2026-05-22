@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from firestore_store import USERS_COLLECTION
+from firebase_store import USERS_PATH
 
 
 class User:
@@ -41,7 +41,7 @@ class User:
         return hash((self.id, self.name, self.email))
 
     def to_firestore_dict(self) -> dict[str, Any]:
-        """Shape stored under ``League`` documents and compatible with Firestore maps."""
+        """JSON shape for nested user records (e.g. under a league node)."""
         data: dict[str, Any] = {"id": str(self.id), "name": self.name}
         if self.email is not None:
             data["email"] = self.email
@@ -65,52 +65,50 @@ class User:
         email: str,
         password: str,
         *,
-        db=None,
+        db_module=None,
         auth_module=None,
     ) -> User:
-        """Create a Firebase Auth user (email/password) and persist the profile in Firestore."""
+        """Create a Firebase Auth user (email/password) and persist the profile in RTDB."""
         if auth_module is None:
-            from firestore_store import get_auth
+            from firebase_store import get_auth
 
             auth_module = get_auth()
-        if db is None:
-            from firestore_store import get_firestore_client
+        if db_module is None:
+            from firebase_store import get_database
 
-            db = get_firestore_client()
+            db_module = get_database()
         record = auth_module.create_user(email=email, password=password, display_name=name)
         user = cls(id=record.uid, name=name, email=email)
         try:
-            user.save_to_firestore(db=db)
+            user.save_to_database(db_module=db_module)
         except Exception:
             auth_module.delete_user(record.uid)
             raise
         return user
 
-    def save_to_firestore(self, db=None) -> None:
-        """Persist profile at ``users/{id}`` (``id`` is the document id)."""
-        if db is None:
-            from firestore_store import get_firestore_client
+    def save_to_database(self, db_module=None) -> None:
+        """Persist profile at ``users/{id}`` in the Realtime Database."""
+        if db_module is None:
+            from firebase_store import get_database
 
-            db = get_firestore_client()
-        doc_id = str(self.id)
-        db.collection(USERS_COLLECTION).document(doc_id).set(self._profile_dict())
+            db_module = get_database()
+        db_module.reference(f"{USERS_PATH}/{self.id}").set(self._profile_dict())
 
     @classmethod
-    def load_from_firestore(cls, user_id: str, db=None) -> User | None:
-        if db is None:
-            from firestore_store import get_firestore_client
+    def load_from_database(cls, user_id: str, db_module=None) -> User | None:
+        if db_module is None:
+            from firebase_store import get_database
 
-            db = get_firestore_client()
-        snap = db.collection(USERS_COLLECTION).document(str(user_id)).get()
-        if not snap.exists:
+            db_module = get_database()
+        data = db_module.reference(f"{USERS_PATH}/{user_id}").get()
+        if not data:
             return None
-        data = snap.to_dict() or {}
         return cls(id=str(user_id), name=data["name"], email=data.get("email"))
 
     @classmethod
-    def delete_from_firestore(cls, user_id: str, db=None) -> None:
-        if db is None:
-            from firestore_store import get_firestore_client
+    def delete_from_database(cls, user_id: str, db_module=None) -> None:
+        if db_module is None:
+            from firebase_store import get_database
 
-            db = get_firestore_client()
-        db.collection(USERS_COLLECTION).document(str(user_id)).delete()
+            db_module = get_database()
+        db_module.reference(f"{USERS_PATH}/{user_id}").delete()
