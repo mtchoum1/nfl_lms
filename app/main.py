@@ -14,6 +14,7 @@ from espn_nfl import fetch_nfl_games, fetch_nfl_teams, sync_nfl_teams_to_databas
 from game import Game, GameAlreadyExistsError, GameValidationError
 from league import League, LeagueAlreadyExistsError, LeagueValidationError
 from pick import Pick, PickAlreadyExistsError, PickValidationError
+from pick_validation import PickRuleError, validate_pick_submission
 from settings import Settings
 from team import Team
 from user import User, UserValidationError
@@ -151,10 +152,7 @@ def _game_to_dict(game: Game) -> dict:
     return data
 
 
-    return data
-
-
-def _pick_to_dict(pick: Pick) -> dict:
+def _pick_to_dict(pick: Pick, *, points_preview: float | None = None) -> dict:
     data: dict[str, Any] = {
         "id": pick.get_id(),
         "user_id": pick.get_user_id(),
@@ -165,6 +163,8 @@ def _pick_to_dict(pick: Pick) -> dict:
     }
     if pick.get_result() is not None:
         data["result"] = pick.get_result()
+    if points_preview is not None:
+        data["points_preview"] = round(points_preview, 2)
     return data
 
 
@@ -375,6 +375,13 @@ def create_app() -> FastAPI:
     @app.post("/api/v1/picks", tags=["database"], status_code=201)
     def post_pick(body: PickCreateBody) -> dict:
         try:
+            points_preview = validate_pick_submission(
+                body.user_id,
+                body.league_id,
+                body.week,
+                body.team_id,
+                body.game_id,
+            )
             pick = Pick.create_in_database(
                 body.user_id,
                 body.league_id,
@@ -385,9 +392,11 @@ def create_app() -> FastAPI:
             )
         except PickAlreadyExistsError:
             raise HTTPException(status_code=409, detail="Pick already exists") from None
+        except PickRuleError as exc:
+            raise _validation_error_response(exc) from None
         except PickValidationError as exc:
             raise _validation_error_response(exc) from None
-        return _pick_to_dict(pick)
+        return _pick_to_dict(pick, points_preview=points_preview)
 
     @app.get("/api/v1/picks/{pick_id}", tags=["database"])
     def get_pick(pick_id: str) -> dict:

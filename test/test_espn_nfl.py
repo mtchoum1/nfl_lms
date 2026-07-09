@@ -1,10 +1,10 @@
 """Tests for ESPN NFL team fetch helpers (no network in default tests)."""
 
-import os
-
-import pytest
+from unittest.mock import MagicMock
 
 from espn_nfl import (
+    SITE_NFL_SCOREBOARD,
+    SITE_NFL_TEAMS,
     _game_result_from_competition,
     _game_status_from_espn,
     _moneyline_odds,
@@ -176,23 +176,82 @@ def test_parse_scoreboard_payload():
     assert games[0].get_season_year() == 2024
 
 
-@pytest.mark.skipif(
-    not os.environ.get("NFL_LMS_LIVE_ESPN"),
-    reason="Set NFL_LMS_LIVE_ESPN=1 to run live ESPN integration test.",
-)
-def test_live_fetch_has_thirty_two_teams_and_divisions():
-    teams = fetch_nfl_teams()
+def _site_teams_payload(team_count: int = 32) -> dict:
+    teams = [
+        {
+            "team": {
+                "id": i + 1,
+                "abbreviation": f"T{i + 1}",
+                "displayName": f"Team {i + 1}",
+                "location": f"City {i + 1}",
+            }
+        }
+        for i in range(team_count)
+    ]
+    return {"sports": [{"leagues": [{"teams": teams}]}]}
+
+
+def _division_metadata_for_team_count(team_count: int = 32) -> dict[str, dict]:
+    conferences = ("NFC", "AFC")
+    divisions = ("East", "West", "North", "South")
+    meta: dict[str, dict] = {}
+    for i in range(team_count):
+        tid = str(i + 1)
+        conference = conferences[i % 2]
+        division = f"{conference} {divisions[i % 4]}"
+        meta[tid] = {
+            "division_id": str(100 + i),
+            "division_name": division,
+            "division_abbreviation": division.replace(" ", ""),
+            "conference_id": "7" if conference == "NFC" else "8",
+            "conference_name": conference,
+        }
+    return meta
+
+
+def test_fetch_nfl_teams_builds_thirty_two_teams_with_divisions(monkeypatch):
+    monkeypatch.setattr("espn_nfl.resolve_season_year", lambda _client, _preferred: 2024)
+    monkeypatch.setattr(
+        "espn_nfl._fetch_json",
+        lambda _client, url, params=None: _site_teams_payload()
+        if url == SITE_NFL_TEAMS
+        else {},
+    )
+    monkeypatch.setattr(
+        "espn_nfl._build_team_division_metadata",
+        lambda _client, _year: _division_metadata_for_team_count(),
+    )
+
+    teams = fetch_nfl_teams(season_year=2024, client=MagicMock())
+
     assert len(teams) == 32
     assert all(t.division_name for t in teams)
     assert all(t.conference_name in ("AFC", "NFC") for t in teams)
 
 
-@pytest.mark.skipif(
-    not os.environ.get("NFL_LMS_LIVE_ESPN"),
-    reason="Set NFL_LMS_LIVE_ESPN=1 to run live ESPN integration test.",
-)
-def test_live_fetch_games_for_week_one():
-    games = fetch_nfl_games(week=1, season_year=2024)
+def test_fetch_nfl_games_for_week_one(monkeypatch):
+    payload = {
+        "season": {"year": 2024},
+        "week": {"number": 1},
+        "events": [_sample_scoreboard_event()],
+    }
+    captured: dict = {}
+
+    def fake_fetch_json(_client, url, params=None):
+        captured["url"] = url
+        captured["params"] = params
+        return payload
+
+    def resolve_year(_client, preferred):
+        return preferred or 2024
+
+    monkeypatch.setattr("espn_nfl.resolve_season_year", resolve_year)
+    monkeypatch.setattr("espn_nfl._fetch_json", fake_fetch_json)
+
+    games = fetch_nfl_games(week=1, season_year=2024, client=MagicMock())
+
+    assert captured["url"] == SITE_NFL_SCOREBOARD
+    assert captured["params"] == {"seasontype": 2, "week": 1, "year": 2024}
     assert len(games) >= 1
     game = games[0]
     assert game.get_week() == 1

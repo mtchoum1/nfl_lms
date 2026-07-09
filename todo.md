@@ -63,9 +63,9 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 
 ## Game rules (core logic)
 
-- [ ] **Rule 1:** Enforce “pick a team to win, can’t pick that team again” (per user per league) — *Backend*
+- [x] **Rule 1:** Enforce “pick a team to win, can’t pick that team again” (per user per league) — *Backend* [`pick_validation.py`](pick_validation.py), [`POST /api/v1/picks`](app/main.py)
 - [ ] **Rule 2/3 (optional):** Division rule — can’t pick same division until all others used once (8-week rolling) — *Backend*
-- [ ] **Rule 4:** Team points equation — (+) odds: `(1 - (100/(odd + 100))) * 100`; (-) odds: `(1 - (abs(odd)/(abs(odd) + 100))) * 100` — *Backend*
+- [x] **Rule 4:** Team points equation — (+) odds: `(1 - (100/(odd + 100))) * 100`; (-) odds: `(1 - (abs(odd)/(abs(odd) + 100))) * 100` — *Backend* [`scoring.py`](scoring.py)
 - [ ] **Rule 5:** Tie = half of total points: `((team1 points) + (team2 points)) / 2` — *Backend*
 - [ ] **Rule 6 (optional):** Comeback rule — N back-to-back correct picks after elimination re-enters pool (tie = win for comeback) — *Backend*
 - [ ] **Rule 7:** If eliminated and pick wins → `0.5 * (team points)` only — *Backend*
@@ -73,9 +73,9 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 
 **Tests**
 
-- [ ] Team points equation: (+) and (-) odds produce expected values (unit tests) — *Backend*
+- [x] Team points equation: (+) and (-) odds produce expected values (unit tests) — *Backend* [`test/test_scoring.py`](test/test_scoring.py)
 - [ ] Tie scoring: half of (team1 + team2) points (unit test) — *Backend*
-- [ ] Rule 1: Re-picking same team is rejected (unit or integration) — *Backend*
+- [x] Rule 1: Re-picking same team is rejected (unit or integration) — *Backend* [`test/test_pick_validation.py`](test/test_pick_validation.py), [`test/test_database_models.py`](test/test_database_models.py)
 - [ ] Division rule: invalid pick when division not yet “unlocked” (if enabled) — *Backend*
 - [ ] Elimination: user marked eliminated on loss when mode on — *Backend*
 - [ ] Comeback: N back-to-back wins (tie = win) re-enters user (if enabled) — *Backend*

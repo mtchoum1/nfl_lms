@@ -528,13 +528,18 @@ def _sample_game_body(*, game_id: str = "401772510") -> dict:
 
 def test_api_pick_crud_persists_to_database():
     db = InMemoryDatabase()
+    Game("401772510", 2024, 1, "21", "6", home_odds=-150, away_odds=130).save_to_database(
+        db_module=db
+    )
     create_body = _sample_pick_body(pick_id="pick-api-1")
 
     with patch("firebase_store.get_database", return_value=db):
         client = TestClient(app)
         create_r = client.post("/api/v1/picks", json=create_body)
         assert create_r.status_code == 201
-        assert create_r.json()["id"] == "pick-api-1"
+        payload = create_r.json()
+        assert payload["id"] == "pick-api-1"
+        assert payload["points_preview"] == 40.0
 
         get_r = client.get("/api/v1/picks/pick-api-1")
         assert get_r.status_code == 200
@@ -550,6 +555,39 @@ def test_api_pick_crud_persists_to_database():
         delete_r = client.delete("/api/v1/picks/pick-api-1")
         assert delete_r.status_code == 204
         assert Pick.load_from_database("pick-api-1", db_module=db) is None
+
+
+def test_api_post_pick_rejects_repeat_team():
+    db = InMemoryDatabase()
+    Game("401772510", 2024, 1, "21", "6", home_odds=-150, away_odds=130).save_to_database(
+        db_module=db
+    )
+    Pick.create_in_database("u1", "L1", 1, "21", "401772510", db_module=db)
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.post(
+            "/api/v1/picks",
+            json={
+                "user_id": "u1",
+                "league_id": "L1",
+                "week": 2,
+                "team_id": "21",
+                "game_id": "401772510",
+            },
+        )
+
+    assert r.status_code == 400
+    assert "already picked" in r.json()["detail"]
+
+
+def test_api_post_pick_requires_game():
+    db = InMemoryDatabase()
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.post("/api/v1/picks", json=_sample_pick_body())
+    assert r.status_code == 400
+    assert "not found" in r.json()["detail"]
 
 
 def test_api_game_crud_persists_to_database():

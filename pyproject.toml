@@ -24,7 +24,18 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["user", "league", "settings", "team", "pick", "game", "espn_nfl", "firebase_store"]
+py-modules = [
+    "user",
+    "league",
+    "settings",
+    "team",
+    "pick",
+    "game",
+    "scoring",
+    "pick_validation",
+    "espn_nfl",
+    "firebase_store",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -36,7 +47,7 @@ pythonpath = [".", "test"]
 addopts = "-ra"
 markers = [
     "e2e: full-app API scenarios (end-to-end via TestClient, see test/e2e/)",
-    "firebase: live Realtime Database (requires FIREBASE_TEST=1 and credentials or emulator; see test_firebase_integration.py)",
+    "firebase: Realtime Database roundtrips (in-memory by default; see test_firebase_integration.py)",
 ]
 
 [tool.ruff]

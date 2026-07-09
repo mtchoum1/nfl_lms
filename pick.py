@@ -210,3 +210,25 @@ class Pick:
 
             db_module = get_database()
         db_module.reference(f"{PICKS_PATH}/{pick_id}").delete()
+
+    @classmethod
+    def list_for_user_league(
+        cls,
+        user_id: str,
+        league_id: str,
+        *,
+        db_module=None,
+        max_week: int = 18,
+    ) -> list[Pick]:
+        """Load all picks for a user in a league (weeks 1 through ``max_week``)."""
+        if db_module is None:
+            from firebase_store import get_database
+
+            db_module = get_database()
+        picks: list[Pick] = []
+        for week in range(1, max_week + 1):
+            pid = _pick_id_for(league_id, user_id, week)
+            pick = cls.load_from_database(pid, db_module=db_module)
+            if pick is not None:
+                picks.append(pick)
+        return picks
