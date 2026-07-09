@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from firebase_store import TEAMS_PATH
+
+
+class TeamValidationError(ValueError):
+    """Raised when team fields fail validation."""
+
 
 class Team:
     """One NFL franchise for a given season context (division alignment from ESPN)."""
@@ -34,6 +40,7 @@ class Team:
         self.division_abbreviation = division_abbreviation
         self.conference_id = conference_id
         self.conference_name = conference_name
+        self._validate()
 
     def get_id(self) -> str:
         return self.id
@@ -43,6 +50,14 @@ class Team:
 
     def get_display_name(self) -> str:
         return self.display_name
+
+    def _validate(self) -> None:
+        if not self.id.strip():
+            raise TeamValidationError("id is required")
+        if not self.abbreviation.strip():
+            raise TeamValidationError("abbreviation is required")
+        if not self.display_name.strip():
+            raise TeamValidationError("display_name is required")
 
     def __repr__(self) -> str:
         return (
@@ -96,3 +111,35 @@ class Team:
             conference_id=data.get("conference_id"),
             conference_name=data.get("conference_name"),
         )
+
+    def save_to_database(self, db_module=None) -> None:
+        """Persist at ``teams/{id}`` in the Realtime Database."""
+        if db_module is None:
+            from firebase_store import get_database
+
+            db_module = get_database()
+        db_module.reference(f"{TEAMS_PATH}/{self.id}").set(self.to_firestore_dict())
+
+    @classmethod
+    def load_from_database(cls, team_id: str, db_module=None) -> Team | None:
+        if db_module is None:
+            from firebase_store import get_database
+
+            db_module = get_database()
+        data = db_module.reference(f"{TEAMS_PATH}/{team_id}").get()
+        if not data:
+            return None
+        return cls.from_firestore_dict(data)
+
+    @classmethod
+    def delete_from_database(cls, team_id: str, db_module=None) -> None:
+        if db_module is None:
+            from firebase_store import get_database
+
+            db_module = get_database()
+        db_module.reference(f"{TEAMS_PATH}/{team_id}").delete()
+
+    @classmethod
+    def save_many_to_database(cls, teams: list[Team], db_module=None) -> None:
+        for team in teams:
+            team.save_to_database(db_module=db_module)

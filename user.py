@@ -5,11 +5,16 @@ from typing import Any
 from firebase_store import USERS_PATH
 
 
+class UserValidationError(ValueError):
+    """Raised when user fields fail validation."""
+
+
 class User:
     def __init__(self, id, name, email: str | None = None):
         self.id = id
         self.name = name
         self.email = email
+        self._validate()
 
     def get_id(self):
         return self.id
@@ -19,6 +24,14 @@ class User:
 
     def get_email(self) -> str | None:
         return self.email
+
+    def _validate(self) -> None:
+        if self.id is None or not str(self.id).strip():
+            raise UserValidationError("id is required")
+        if not str(self.name).strip():
+            raise UserValidationError("name is required")
+        if self.email is not None and not str(self.email).strip():
+            raise UserValidationError("email must be non-empty when provided")
 
     def __repr__(self):
         if self.email is not None:

@@ -11,6 +11,9 @@ from firebase_admin import auth, credentials, db
 DEFAULT_DATABASE_URL = "https://nfl-lms-default-rtdb.firebaseio.com"
 USERS_PATH = "users"
 LEAGUES_PATH = "leagues"
+PICKS_PATH = "picks"
+GAMES_PATH = "games"
+TEAMS_PATH = "teams"
 
 _dotenv_loaded = False
 

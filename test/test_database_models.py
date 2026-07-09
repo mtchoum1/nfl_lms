@@ -9,9 +9,12 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from database_fake import InMemoryDatabase
-from firebase_store import LEAGUES_PATH, USERS_PATH
+from firebase_store import GAMES_PATH, LEAGUES_PATH, PICKS_PATH, USERS_PATH
+from game import Game
 from league import League, LeagueAlreadyExistsError
+from pick import Pick, PickAlreadyExistsError
 from settings import Settings
+from team import Team
 from user import User
 
 
@@ -372,12 +375,42 @@ def test_api_post_user_signup():
 
 
 def test_api_put_user_calls_save():
-    with patch.object(User, "save_to_database") as save:
+    with (
+        patch.object(User, "load_from_database", return_value=User("u1", "Old")),
+        patch.object(User, "save_to_database") as save,
+    ):
         client = TestClient(app)
         r = client.put("/api/v1/users/u1", json={"name": "Sam"})
     assert r.status_code == 200
     assert r.json() == {"id": "u1", "name": "Sam"}
     save.assert_called_once()
+
+
+def test_api_put_user_404_when_missing():
+    with patch.object(User, "load_from_database", return_value=None):
+        client = TestClient(app)
+        r = client.put("/api/v1/users/missing", json={"name": "Sam"})
+    assert r.status_code == 404
+
+
+def test_api_delete_user():
+    db = InMemoryDatabase()
+    User("u1", "Ann").save_to_database(db_module=db)
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.delete("/api/v1/users/u1")
+
+    assert r.status_code == 204
+    assert User.load_from_database("u1", db_module=db) is None
+
+
+def test_api_delete_user_404():
+    db = InMemoryDatabase()
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.delete("/api/v1/users/missing")
+    assert r.status_code == 404
 
 
 def test_api_get_league_404():
@@ -390,6 +423,13 @@ def test_api_get_league_404():
 def test_api_put_league_persists_to_database():
     db = InMemoryDatabase()
     body = _sample_league_body(league_id="L-put-1")
+    League.create_in_database(
+        "Placeholder",
+        [],
+        Settings(),
+        league_id="L-put-1",
+        db_module=db,
+    )
 
     with patch("firebase_store.get_database", return_value=db):
         client = TestClient(app)
@@ -398,6 +438,41 @@ def test_api_put_league_persists_to_database():
     assert r.status_code == 200
     assert r.json()["id"] == "L-put-1"
     assert db.get_node(f"{LEAGUES_PATH}/L-put-1")["name"] == "West"
+
+
+def test_game_save_to_database():
+    db = InMemoryDatabase()
+    game = Game("401772510", 2024, 1, "21", "6", status="final", result="home")
+    game.save_to_database(db_module=db)
+    assert db.get_node(f"{GAMES_PATH}/401772510") == game.to_firestore_dict()
+
+
+def test_pick_save_to_database():
+    db = InMemoryDatabase()
+    pick = Pick("pick-1", "u1", "L1", 3, "team-5", "game-20")
+    pick.save_to_database(db_module=db)
+    assert db.get_node(f"{PICKS_PATH}/pick-1") == pick.to_firestore_dict()
+
+
+def test_pick_create_in_database_persists_and_loads():
+    db = InMemoryDatabase()
+    pick = Pick.create_in_database(
+        "u1",
+        "league-test",
+        1,
+        "team-1",
+        "game-1",
+        db_module=db,
+    )
+    loaded = Pick.load_from_database(pick.get_id(), db_module=db)
+    assert loaded == pick
+
+
+def test_pick_create_in_database_rejects_duplicate_week():
+    db = InMemoryDatabase()
+    Pick.create_in_database("u1", "L1", 2, "team-1", "game-1", db_module=db)
+    with pytest.raises(PickAlreadyExistsError):
+        Pick.create_in_database("u1", "L1", 2, "team-2", "game-2", db_module=db)
 
 
 def test_api_put_league_calls_save():
@@ -412,10 +487,118 @@ def test_api_put_league_calls_save():
             "active_multiplier": 1.0,
         },
     }
-    with patch.object(League, "save_to_database") as save:
+    existing = League("L9", "Old", [], Settings())
+    with (
+        patch.object(League, "load_from_database", return_value=existing),
+        patch.object(League, "save_to_database") as save,
+    ):
         client = TestClient(app)
         r = client.put("/api/v1/leagues/L9", json=body)
     assert r.status_code == 200
     assert r.json()["id"] == "L9"
     assert r.json()["name"] == "West"
     save.assert_called_once()
+
+
+def _sample_pick_body(*, pick_id: str | None = None) -> dict:
+    body = {
+        "user_id": "u1",
+        "league_id": "L1",
+        "week": 1,
+        "team_id": "21",
+        "game_id": "401772510",
+    }
+    if pick_id is not None:
+        body["id"] = pick_id
+    return body
+
+
+def _sample_game_body(*, game_id: str = "401772510") -> dict:
+    return {
+        "id": game_id,
+        "season_year": 2024,
+        "week": 1,
+        "home_team_id": "21",
+        "away_team_id": "6",
+        "home_odds": -150,
+        "away_odds": 130,
+        "status": "scheduled",
+    }
+
+
+def test_api_pick_crud_persists_to_database():
+    db = InMemoryDatabase()
+    create_body = _sample_pick_body(pick_id="pick-api-1")
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        create_r = client.post("/api/v1/picks", json=create_body)
+        assert create_r.status_code == 201
+        assert create_r.json()["id"] == "pick-api-1"
+
+        get_r = client.get("/api/v1/picks/pick-api-1")
+        assert get_r.status_code == 200
+        assert get_r.json()["team_id"] == "21"
+
+        put_r = client.put(
+            "/api/v1/picks/pick-api-1",
+            json={**create_body, "result": "win"},
+        )
+        assert put_r.status_code == 200
+        assert put_r.json()["result"] == "win"
+
+        delete_r = client.delete("/api/v1/picks/pick-api-1")
+        assert delete_r.status_code == 204
+        assert Pick.load_from_database("pick-api-1", db_module=db) is None
+
+
+def test_api_game_crud_persists_to_database():
+    db = InMemoryDatabase()
+    body = _sample_game_body()
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        create_r = client.post("/api/v1/games", json=body)
+        assert create_r.status_code == 201
+        assert create_r.json()["id"] == "401772510"
+
+        get_r = client.get("/api/v1/games/401772510")
+        assert get_r.status_code == 200
+
+        put_r = client.put(
+            "/api/v1/games/401772510",
+            json={**body, "status": "final", "result": "home", "home_score": 24, "away_score": 20},
+        )
+        assert put_r.status_code == 200
+        assert put_r.json()["result"] == "home"
+
+        delete_r = client.delete("/api/v1/games/401772510")
+        assert delete_r.status_code == 204
+        assert Game.load_from_database("401772510", db_module=db) is None
+
+
+def test_api_delete_league():
+    db = InMemoryDatabase()
+    League.create_in_database("West", [], Settings(), league_id="L-del", db_module=db)
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        r = client.delete("/api/v1/leagues/L-del")
+
+    assert r.status_code == 204
+    assert League.load_from_database("L-del", db_module=db) is None
+
+
+def test_api_team_get_and_delete():
+    db = InMemoryDatabase()
+    Team("22", "ARI", "Arizona Cardinals").save_to_database(db_module=db)
+
+    with patch("firebase_store.get_database", return_value=db):
+        client = TestClient(app)
+        get_r = client.get("/api/v1/teams/22")
+        assert get_r.status_code == 200
+        assert get_r.json()["abbreviation"] == "ARI"
+
+        delete_r = client.delete("/api/v1/teams/22")
+        assert delete_r.status_code == 204
+        assert Team.load_from_database("22", db_module=db) is None

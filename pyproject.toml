@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["user", "league", "settings", "team", "espn_nfl", "firebase_store"]
+py-modules = ["user", "league", "settings", "team", "pick", "game", "espn_nfl", "firebase_store"]
 
 [tool.setuptools.packages.find]
 where = ["."]

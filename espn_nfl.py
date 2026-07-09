@@ -1,4 +1,4 @@
-"""Fetch NFL teams + divisions from ESPN public HTTP APIs (unofficial; may change)."""
+"""Fetch NFL teams, games, and divisions from ESPN public HTTP APIs (unofficial; may change)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,11 @@ from typing import Any
 
 import httpx
 
+from game import Game
 from team import Team
 
 SITE_NFL_TEAMS = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams"
+SITE_NFL_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 SEASON_TYPE_REGULAR = 2
 # ESPN conference group ids for NFL regular season (stable for aligned divisions).
 NFC_CONFERENCE_GROUP_ID = "7"
@@ -48,8 +50,10 @@ def _parse_site_teams(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _fetch_json(client: httpx.Client, url: str) -> dict[str, Any]:
-    response = client.get(url)
+def _fetch_json(
+    client: httpx.Client, url: str, *, params: dict[str, str | int] | None = None
+) -> dict[str, Any]:
+    response = client.get(url, params=params)
     response.raise_for_status()
     return response.json()
 
@@ -207,6 +211,200 @@ def fetch_nfl_teams(
 
         teams.sort(key=lambda t: (t.division_name or "", t.abbreviation))
         return teams
+    finally:
+        if own_client:
+            client.close()
+
+
+def sync_nfl_teams_to_database(
+    season_year: int | None = None,
+    *,
+    client: httpx.Client | None = None,
+    db_module=None,
+    timeout: float = 30.0,
+) -> list[Team]:
+    """Fetch NFL teams from ESPN and persist each at ``teams/{id}``."""
+    teams = fetch_nfl_teams(season_year=season_year, client=client, timeout=timeout)
+    Team.save_many_to_database(teams, db_module=db_module)
+    return teams
+
+
+def _parse_american_odds(value: str | int | None) -> int | None:
+    """Parse ESPN moneyline strings such as ``-192`` or ``+160``."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    s = str(value).strip().replace("\u2212", "-")
+    if not s:
+        return None
+    if s.startswith("+"):
+        s = s[1:]
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+def _moneyline_odds(moneyline: dict[str, Any] | None, side: str) -> int | None:
+    if not moneyline:
+        return None
+    side_data = moneyline.get(side) or {}
+    close = (side_data.get("close") or {}).get("odds")
+    if close is not None:
+        return _parse_american_odds(close)
+    open_odds = (side_data.get("open") or {}).get("odds")
+    return _parse_american_odds(open_odds)
+
+
+def _game_status_from_espn(status_type: dict[str, Any]) -> str:
+    state = (status_type.get("state") or "").lower()
+    name = (status_type.get("name") or "").upper()
+    if "POSTPONED" in name:
+        return "postponed"
+    if "CANCELED" in name or "CANCELLED" in name:
+        return "cancelled"
+    if state == "in" or "IN_PROGRESS" in name or "HALFTIME" in name:
+        return "in_progress"
+    if state == "post" or status_type.get("completed") or "FINAL" in name:
+        return "final"
+    if state == "pre" or "SCHEDULED" in name:
+        return "scheduled"
+    return "scheduled"
+
+
+def _competitor_score(competitor: dict[str, Any]) -> int | None:
+    score = competitor.get("score")
+    if score is None or score == "":
+        return None
+    return int(score)
+
+
+def _game_result_from_competition(comp: dict[str, Any], status: str) -> str | None:
+    if status != "final":
+        return None
+    competitors = comp.get("competitors") or []
+    home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+    away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+    if not home or not away:
+        return None
+    home_score = _competitor_score(home)
+    away_score = _competitor_score(away)
+    if home_score is None or away_score is None:
+        if home.get("winner") is True:
+            return "home"
+        if away.get("winner") is True:
+            return "away"
+        return None
+    if home_score == away_score:
+        return "tie"
+    if home.get("winner") is True:
+        return "home"
+    if away.get("winner") is True:
+        return "away"
+    if home_score > away_score:
+        return "home"
+    if away_score > home_score:
+        return "away"
+    return None
+
+
+def _parse_scoreboard_event(
+    event: dict[str, Any],
+    *,
+    season_year: int,
+    week: int,
+) -> Game | None:
+    event_id = event.get("id")
+    competitions = event.get("competitions") or []
+    if event_id is None or not competitions:
+        return None
+
+    comp = competitions[0]
+    competitors = comp.get("competitors") or []
+    home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+    away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+    if not home or not away:
+        return None
+
+    home_team_id = home.get("id") or (home.get("team") or {}).get("id")
+    away_team_id = away.get("id") or (away.get("team") or {}).get("id")
+    if home_team_id is None or away_team_id is None:
+        return None
+
+    status_type = (comp.get("status") or {}).get("type") or {}
+    status = _game_status_from_espn(status_type)
+    result = _game_result_from_competition(comp, status)
+
+    odds_list = comp.get("odds") or []
+    home_odds: int | None = None
+    away_odds: int | None = None
+    if odds_list:
+        odds = odds_list[0]
+        moneyline = odds.get("moneyline")
+        home_odds = _moneyline_odds(moneyline, "home")
+        away_odds = _moneyline_odds(moneyline, "away")
+        if home_odds is None:
+            home_odds = _parse_american_odds(odds.get("homeMoneyLine"))
+        if away_odds is None:
+            away_odds = _parse_american_odds(odds.get("awayMoneyLine"))
+
+    event_week = (event.get("week") or {}).get("number")
+    resolved_week = int(event_week) if event_week is not None else week
+
+    return Game(
+        id=str(event_id),
+        season_year=season_year,
+        week=resolved_week,
+        home_team_id=str(home_team_id),
+        away_team_id=str(away_team_id),
+        home_odds=home_odds,
+        away_odds=away_odds,
+        status=status,
+        result=result,
+        home_score=_competitor_score(home),
+        away_score=_competitor_score(away),
+        start_date=comp.get("date") or event.get("date"),
+    )
+
+
+def _parse_scoreboard_payload(payload: dict[str, Any]) -> list[Game]:
+    season_year = int((payload.get("season") or {}).get("year") or datetime.now(tz=UTC).year)
+    week = int((payload.get("week") or {}).get("number") or 1)
+    games: list[Game] = []
+    for event in payload.get("events") or []:
+        game = _parse_scoreboard_event(event, season_year=season_year, week=week)
+        if game is not None:
+            games.append(game)
+    games.sort(key=lambda g: (g.week, g.start_date or "", g.id))
+    return games
+
+
+def fetch_nfl_games(
+    *,
+    week: int | None = None,
+    season_year: int | None = None,
+    client: httpx.Client | None = None,
+    timeout: float = 30.0,
+) -> list[Game]:
+    """
+    Load NFL games for the current or selected week from ESPN's scoreboard API.
+
+    When ``week`` and/or ``season_year`` are omitted, ESPN returns the current scoreboard week.
+    """
+    own_client = client is None
+    if client is None:
+        client = httpx.Client(timeout=timeout)
+
+    try:
+        params: dict[str, str | int] = {"seasontype": SEASON_TYPE_REGULAR}
+        if week is not None:
+            params["week"] = week
+        if season_year is not None:
+            year = resolve_season_year(client, season_year)
+            params["year"] = year
+        payload = _fetch_json(client, SITE_NFL_SCOREBOARD, params=params)
+        return _parse_scoreboard_payload(payload)
     finally:
         if own_client:
             client.close()

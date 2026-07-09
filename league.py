@@ -8,6 +8,10 @@ from settings import Settings
 from user import User
 
 
+class LeagueValidationError(ValueError):
+    """Raised when league fields fail validation."""
+
+
 class LeagueAlreadyExistsError(ValueError):
     """Raised when creating a league whose id is already in the database."""
 
@@ -18,12 +22,25 @@ class League:
         self.name = name
         self.users = users
         self.settings = settings
+        self._validate()
 
     def get_id(self):
         return self.id
 
     def get_name(self):
         return self.name
+
+    def _validate(self) -> None:
+        if self.id is None or not str(self.id).strip():
+            raise LeagueValidationError("id is required")
+        if not str(self.name).strip():
+            raise LeagueValidationError("name is required")
+        if not isinstance(self.users, list):
+            raise LeagueValidationError("users must be a list")
+        if not all(isinstance(u, User) for u in self.users):
+            raise LeagueValidationError("users must contain User instances")
+        if not isinstance(self.settings, Settings):
+            raise LeagueValidationError("settings must be a Settings instance")
 
     def __repr__(self):
         return f"League(id={self.id}, name={self.name})"

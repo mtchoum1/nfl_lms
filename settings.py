@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 
+class SettingsValidationError(ValueError):
+    """Raised when settings fields fail validation."""
+
+
 class Settings:
     """Per-league Last Man Standing rule options."""
 
@@ -22,6 +26,7 @@ class Settings:
         self.comeback_games_required = comeback_games_required
         self.active_multiplier = active_multiplier
         self.eliminated_multiplier = eliminated_multiplier
+        self._validate()
 
     def set_multipliers(
         self,
@@ -34,6 +39,15 @@ class Settings:
             self.active_multiplier = active_multiplier
         if eliminated_multiplier is not None:
             self.eliminated_multiplier = eliminated_multiplier
+        self._validate()
+
+    def _validate(self) -> None:
+        if self.comeback_games_required < 1:
+            raise SettingsValidationError("comeback_games_required must be at least 1")
+        if self.active_multiplier <= 0:
+            raise SettingsValidationError("active_multiplier must be greater than 0")
+        if self.eliminated_multiplier is not None and self.eliminated_multiplier <= 0:
+            raise SettingsValidationError("eliminated_multiplier must be greater than 0")
 
     def __repr__(self):
         return (

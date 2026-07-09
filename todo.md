@@ -49,14 +49,14 @@ Domain models, FastAPI routes, and **Firebase** (Auth + Realtime Database) persi
 - [x] Define **League** model (`id`, `name`, `users`, `settings`; `create_in_database`; RTDB CRUD) — [`league.py`](league.py), [`POST/GET/PUT /api/v1/leagues`](app/main.py) — *Backend* (season, week **TBD**)
 - [x] Define **League settings** (elimination on/off, division rule on/off, comeback rule on/off, comeback games count; optional multipliers) — [`settings.py`](settings.py) — *Backend*
 - [x] Define **Team** model (NFL teams + divisions) — *Backend* [`team.py`](team.py), [`espn_nfl.py`](espn_nfl.py), [`GET /api/v1/nfl/teams`](app/main.py)
-- [ ] Define **Pick** model (user, league, week, team, game, result) — *Backend*
-- [ ] Define **Game** model (week, home/away, odds, result, status) — *Backend*
-- [x] Seed or fetch NFL schedule and divisions — *Backend* (`fetch_nfl_teams`; schedule TBD)
+- [x] Define **Pick** model (user, league, week, team, game, result) — *Backend* [`pick.py`](pick.py), [`test/test_pick.py`](test/test_pick.py)
+- [x] Define **Game** model (week, home/away, odds, result, status) — *Backend* [`game.py`](game.py), [`espn_nfl.py`](espn_nfl.py) (`fetch_nfl_games`), [`GET /api/v1/nfl/games`](app/main.py), [`test/test_game.py`](test/test_game.py)
+- [x] Seed or fetch NFL schedule and divisions — *Backend* (`fetch_nfl_teams`, `fetch_nfl_games`)
 
 **Tests**
 
-- [ ] Model validation (required fields, constraints) — unit or schema tests — *Backend*
-- [ ] CRUD / DB operations for each model (create, read, update where applicable) — *Backend* (**User + League create/read/update in RTDB done**; delete API + Pick/Game TBD)
+- [x] Model validation (required fields, constraints) — unit or schema tests — *Backend* [`test/test_model_validation.py`](test/test_model_validation.py)
+- [x] CRUD / DB operations for each model (create, read, update where applicable) — *Backend* [`test/test_crud_operations.py`](test/test_crud_operations.py), API routes in [`app/main.py`](app/main.py)
 - [x] Seed or fetch loads teams/divisions without error — *Backend* (`fetch_nfl_teams`; schedule TBD)
 
 ---
